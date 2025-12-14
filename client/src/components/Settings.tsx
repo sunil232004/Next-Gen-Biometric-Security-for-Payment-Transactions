@@ -3,6 +3,7 @@ import { useToast } from './ui/use-toast';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { getApiUrl } from '@/lib/api';
 
 interface SettingsProps {
   userId: number;
@@ -38,7 +39,7 @@ export function Settings({ userId }: SettingsProps) {
 
     setIsLoading(true);
     try {
-      const response = await fetch('/api/set-upi-pin', {
+      const response = await fetch(getApiUrl('/api/set-upi-pin'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

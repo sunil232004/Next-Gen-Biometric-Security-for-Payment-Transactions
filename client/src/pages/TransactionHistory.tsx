@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { ChevronLeft, Clock, Search, ArrowDown, ArrowUp, Zap, ReceiptText, Filter } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
+import { getApiUrl } from "@/lib/api";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ export default function TransactionHistory() {
   const { data: transactions, isLoading, error } = useQuery({
     queryKey: ["/api/transactions/1"], // Assuming userId is 1 for demo
     queryFn: async () => {
-      const response = await fetch("/api/transactions/1");
+      const response = await fetch(getApiUrl("/api/transactions/1"));
       if (!response.ok) {
         throw new Error("Failed to fetch transactions");
       }

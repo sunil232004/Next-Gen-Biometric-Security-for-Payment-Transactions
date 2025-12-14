@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useToast } from './ui/use-toast';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { getApiUrl } from '@/lib/api';
 
 interface UPIPinVerificationProps {
   userId: number;
@@ -54,7 +55,7 @@ export function UPIPinVerification({ userId, amount, purpose = 'payment', onSucc
     setIsLoading(true);
     try {
       // First verify the UPI PIN
-      const verifyResponse = await fetch('/api/verify-upi-pin', {
+      const verifyResponse = await fetch(getApiUrl('/api/verify-upi-pin'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -82,7 +83,7 @@ export function UPIPinVerification({ userId, amount, purpose = 'payment', onSucc
       }
 
       // Create the transaction
-      const transactionResponse = await fetch('/api/transaction', {
+      const transactionResponse = await fetch(getApiUrl('/api/transaction'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

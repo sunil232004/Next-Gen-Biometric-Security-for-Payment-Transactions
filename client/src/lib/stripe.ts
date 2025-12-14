@@ -1,4 +1,5 @@
 import { loadStripe } from '@stripe/stripe-js';
+import { getApiUrl } from './api';
 
 // Initialize Stripe with the public key
 export const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
@@ -12,7 +13,7 @@ export const handleStripeError = (error: any) => {
 // Function to create a payment intent
 export const createPaymentIntent = async (amount: number) => {
   try {
-    const response = await fetch('/api/create-payment-intent', {
+    const response = await fetch(getApiUrl('/api/create-payment-intent'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -34,7 +35,7 @@ export const createPaymentIntent = async (amount: number) => {
 // Function to verify payment
 export const verifyPayment = async (paymentIntentId: string, userId: number) => {
   try {
-    const response = await fetch('/api/verify-payment', {
+    const response = await fetch(getApiUrl('/api/verify-payment'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -56,7 +57,7 @@ export const verifyPayment = async (paymentIntentId: string, userId: number) => 
 // Function to verify biometric authentication
 export const verifyBiometric = async (userId: number, authType: string, authData: string) => {
   try {
-    const response = await fetch('/api/verify-biometric', {
+    const response = await fetch(getApiUrl('/api/verify-biometric'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

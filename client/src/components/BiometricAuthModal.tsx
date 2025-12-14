@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Fingerprint, Camera, Mic, AlertCircle, Check } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { getApiUrl } from "@/lib/api";
 
 type BiometricType = 'fingerprint' | 'face' | 'voice';
 
@@ -212,7 +213,7 @@ export default function BiometricAuthModal({
         createdAt: new Date().toISOString()
       };
 
-      const response = await fetch("/api/biometric/register", {
+      const response = await fetch(getApiUrl("/api/biometric/register"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -252,7 +253,7 @@ export default function BiometricAuthModal({
         data
       };
 
-      const response = await fetch("/api/biometric/verify", {
+      const response = await fetch(getApiUrl("/api/biometric/verify"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

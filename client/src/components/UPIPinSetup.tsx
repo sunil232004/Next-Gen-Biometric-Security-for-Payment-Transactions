@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useToast } from './ui/use-toast';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { getApiUrl } from '@/lib/api';
 
 interface UPIPinSetupProps {
   userId: number;
@@ -37,7 +38,7 @@ export function UPIPinSetup({ userId, onSuccess }: UPIPinSetupProps) {
 
     setIsLoading(true);
     try {
-      const response = await fetch('/api/set-upi-pin', {
+      const response = await fetch(getApiUrl('/api/set-upi-pin'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
