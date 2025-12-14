@@ -3,7 +3,7 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist/public",
-  "installCommand": "npm install",
+  "installCommand": "npm install --legacy-peer-deps",
   "functions": {
     "api/index.ts": {
       "memory": 1024,
