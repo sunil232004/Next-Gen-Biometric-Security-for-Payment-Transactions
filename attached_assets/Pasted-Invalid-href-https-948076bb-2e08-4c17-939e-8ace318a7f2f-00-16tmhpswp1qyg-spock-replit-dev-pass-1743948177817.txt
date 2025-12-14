@@ -1,0 +1,18 @@
+Invalid href 'https://948076bb-2e08-4c17-939e-8ace318a7f2f-00-16tmhpswp1qyg.spock.replit.dev//' passed to next/router in page: '/replEnvironmentDesktop'. Repeated forward-slashes (//) or backslashes \ are not valid in the href.
+(anonymous) @ _app-732d0c53af9d63f4.js:13Understand this errorAI
+_app-732d0c53af9d63f4.js:13 Invalid href 'https://948076bb-2e08-4c17-939e-8ace318a7f2f-00-16tmhpswp1qyg.spock.replit.dev//flight-booking' passed to next/router in page: '/replEnvironmentDesktop'. Repeated forward-slashes (//) or backslashes \ are not valid in the href.
+(anonymous) @ _app-732d0c53af9d63f4.js:13Understand this errorAI
+_app-732d0c53af9d63f4.js:13 Invalid href 'https://948076bb-2e08-4c17-939e-8ace318a7f2f-00-16tmhpswp1qyg.spock.replit.dev//' passed to next/router in page: '/replEnvironmentDesktop'. Repeated forward-slashes (//) or backslashes \ are not valid in the href.
+(anonymous) @ _app-732d0c53af9d63f4.js:13Understand this errorAI
+_app-732d0c53af9d63f4.js:13 Invalid href 'https://948076bb-2e08-4c17-939e-8ace318a7f2f-00-16tmhpswp1qyg.spock.replit.dev//electricity-bill' passed to next/router in page: '/replEnvironmentDesktop'. Repeated forward-slashes (//) or backslashes \ are not valid in the href.
+(anonymous) @ _app-732d0c53af9d63f4.js:13Understand this errorAI
+_app-732d0c53af9d63f4.js:13 Invalid href 'https://948076bb-2e08-4c17-939e-8ace318a7f2f-00-16tmhpswp1qyg.spock.replit.dev//' passed to next/router in page: '/replEnvironmentDesktop'. Repeated forward-slashes (//) or backslashes \ are not valid in the href.
+(anonymous) @ _app-732d0c53af9d63f4.js:13Understand this errorAI
+_app-732d0c53af9d63f4.js:13 Invalid href 'https://948076bb-2e08-4c17-939e-8ace318a7f2f-00-16tmhpswp1qyg.spock.replit.dev//profile-settings' passed to next/router in page: '/replEnvironmentDesktop'. Repeated forward-slashes (//) or backslashes \ are not valid in the href.
+(anonymous) @ _app-732d0c53af9d63f4.js:13Understand this errorAI
+
+                
+          
+          
+          
+         Chrome is moving towards a new experience that allows users to choose to browse without third-party cookies.

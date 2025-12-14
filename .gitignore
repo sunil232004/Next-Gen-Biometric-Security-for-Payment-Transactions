@@ -1,0 +1,14 @@
+node_modules
+dist
+.DS_Store
+server/public
+vite.config.ts.*
+*.tar.gz
+.env
+.vercel
+client/node_modules
+server/node_modules
+attached_assets.*
+
+# Local Netlify folder
+.netlify
