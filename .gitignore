@@ -15,3 +15,5 @@ attached_assets.*
 
 # Local Netlify folder
 .netlify
+
+error.txt

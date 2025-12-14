@@ -2,13 +2,21 @@ import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
 import { connectToDatabase, createCollections, closeConnection } from "./mongodb";
 import { MongoDBStorage } from "./mongodbStorage";
-import { exec } from 'child_process';
-import { platform } from 'os';
 import http from 'http';
 import { WebSocketServer } from 'ws';
+
+// Simple log function
+function log(message: string, source = 'server') {
+  const formattedTime = new Date().toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
+  console.log(`${formattedTime} [${source}] ${message}`);
+}
 
 // Initialize MongoDB storage
 export const mongoStorage = new MongoDBStorage();
@@ -128,30 +136,12 @@ async function initializeApp() {
       throw err;
     });
 
-    // Setup Vite in development mode
-    if (process.env.NODE_ENV !== 'production') {
-      await setupVite(app, httpServer);
-    } else {
-      serveStatic(app);
-    }
-
     isInitialized = true;
 
     // Start the server
-    const port = process.env.PORT || 5001;
+    const port = process.env.PORT || 5000;
     httpServer.listen(port, () => {
       log(`Server running at http://localhost:${port}`);
-      
-      // Open browser automatically in development mode
-      if (process.env.NODE_ENV !== 'production') {
-        const url = `http://localhost:${port}`;
-        const openCommand = platform() === 'win32' ? 'start' : platform() === 'darwin' ? 'open' : 'xdg-open';
-        exec(`${openCommand} ${url}`, (error) => {
-          if (error) {
-            log(`Failed to open browser: ${error.message}`);
-          }
-        });
-      }
     });
   } catch (error) {
     log(`Failed to initialize the app: ${error}`, 'express');
