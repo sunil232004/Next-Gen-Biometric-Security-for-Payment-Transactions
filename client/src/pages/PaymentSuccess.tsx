@@ -56,15 +56,38 @@ export default function PaymentSuccess() {
     
     if (transactionData) {
       try {
-        setTransaction(JSON.parse(transactionData));
+        const parsed = JSON.parse(transactionData);
+        // Ensure amount is a valid number
+        setTransaction({
+          ...parsed,
+          amount: typeof parsed.amount === 'number' ? parsed.amount : parseFloat(parsed.amount) || 0,
+          timestamp: parsed.timestamp || new Date().toISOString(),
+          type: parsed.type || 'transfer',
+          status: parsed.status || 'success'
+        });
       } catch (e) {
         console.error('Failed to parse transaction data');
+        // Fallback to URL params
+        setTransaction({
+          id: `TXN${Date.now()}`,
+          amount: parseFloat(params.get('amount') || '0') || 0,
+          timestamp: new Date().toISOString(),
+          type: params.get('type') || 'transfer',
+          status: 'success',
+          description: params.get('description') || 'Payment',
+          authMethod: params.get('authMethod') || 'biometric',
+          metadata: {
+            recipientName: params.get('recipient') || 'User',
+            phoneNumber: params.get('phone') || '',
+            upiId: params.get('upiId') || ''
+          }
+        });
       }
     } else {
       // Create mock transaction for demo
       setTransaction({
         id: `TXN${Date.now()}`,
-        amount: parseFloat(params.get('amount') || '0'),
+        amount: parseFloat(params.get('amount') || '0') || 0,
         timestamp: new Date().toISOString(),
         type: params.get('type') || 'transfer',
         status: 'success',
@@ -83,8 +106,10 @@ export default function PaymentSuccess() {
     return () => clearTimeout(timer);
   }, []);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'N/A';
     return date.toLocaleString('en-IN', {
       day: '2-digit',
       month: 'short',
@@ -328,7 +353,7 @@ export default function PaymentSuccess() {
         >
           <h1 className="text-white text-lg font-medium mb-2">Payment Successful!</h1>
           <div className="text-white text-4xl sm:text-5xl font-bold mb-2">
-            ₹{transaction.amount.toLocaleString('en-IN')}
+            ₹{(transaction.amount ?? 0).toLocaleString('en-IN')}
           </div>
           <p className="text-white/80 text-sm">
             {transaction.metadata?.recipientName 

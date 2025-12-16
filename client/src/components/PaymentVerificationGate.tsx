@@ -389,7 +389,7 @@ export default function PaymentVerificationGate({
           </div>
           
           {/* Payment details */}
-          {amount && (
+          {amount !== undefined && (
             <div className="bg-white/10 rounded-lg p-4">
               <div className="flex justify-between items-center">
                 <span className="text-white/80">Amount</span>
