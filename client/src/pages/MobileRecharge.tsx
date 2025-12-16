@@ -161,19 +161,19 @@ export default function MobileRecharge() {
   };
 
   return (
-    <div className="max-w-md mx-auto h-screen bg-white shadow-lg flex flex-col">
-      <header className="bg-[#00baf2] text-white p-4 flex items-center">
-        <button onClick={handleBack} className="mr-4">
-          <ChevronLeft className="h-6 w-6" />
+    <div className="app-container mx-auto min-h-screen bg-white shadow-lg flex flex-col">
+      <header className="bg-[#00baf2] text-white p-responsive flex items-center sticky top-0 z-10">
+        <button onClick={handleBack} className="mr-3 sm:mr-4 tap-target">
+          <ChevronLeft className="icon-responsive-lg" />
         </button>
-        <h1 className="text-xl font-semibold">Mobile Recharge</h1>
+        <h1 className="text-responsive-lg font-semibold">Mobile Recharge</h1>
       </header>
       
-      <main className="flex-1 overflow-y-auto p-4">
+      <main className="flex-1 overflow-y-auto p-responsive scroll-smooth-touch">
         {step === 1 && (
-          <div className="space-y-6">
+          <div className="space-y-5 sm:space-y-6">
             <div className="space-y-2">
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="phone" className="block text-responsive-sm font-medium text-gray-700">
                 Mobile Number
               </label>
               <Input
@@ -183,20 +183,20 @@ export default function MobileRecharge() {
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
                 maxLength={10}
-                className="text-lg"
+                className="input-responsive text-responsive-base"
               />
             </div>
             
-            <div className="bg-blue-50 p-3 rounded-lg flex">
-              <Phone className="h-5 w-5 text-blue-500 mr-2 flex-shrink-0 mt-1" />
-              <p className="text-sm text-blue-700">
+            <div className="bg-blue-50 p-3 sm:p-4 rounded-lg sm:rounded-xl flex">
+              <Phone className="icon-responsive-md text-blue-500 mr-2 sm:mr-3 flex-shrink-0 mt-0.5" />
+              <p className="text-responsive-sm text-blue-700">
                 Please enter the mobile number you wish to recharge
               </p>
             </div>
             
             <Button 
               onClick={handleNext} 
-              className="w-full py-6 text-lg"
+              className="w-full btn-responsive-lg"
               disabled={phoneNumber.length !== 10}
             >
               Proceed to Recharge

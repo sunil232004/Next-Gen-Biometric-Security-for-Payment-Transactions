@@ -11,20 +11,55 @@ interface TransactionReceiptProps {
     timestamp: string;
     type: string;
     status: string;
+    authMethod?: string;
     metadata?: any;
   };
   onClose?: () => void;
+  useFullPage?: boolean; // Option to redirect to full page success screen
 }
 
-export default function TransactionReceipt({ transaction, onClose }: TransactionReceiptProps) {
+export default function TransactionReceipt({ transaction, onClose, useFullPage = true }: TransactionReceiptProps) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const receiptRef = useRef<HTMLDivElement>(null);
 
+  // Redirect to full page payment success if enabled
+  useEffect(() => {
+    if (useFullPage && transaction) {
+      // Store transaction in sessionStorage for the success page
+      const transactionData = {
+        id: transaction.id?.toString() || `TXN${Date.now()}`,
+        amount: transaction.amount,
+        timestamp: transaction.timestamp,
+        type: transaction.type,
+        status: transaction.status,
+        authMethod: transaction.authMethod || 'biometric',
+        description: transaction.metadata?.description,
+        metadata: typeof transaction.metadata === 'string' 
+          ? JSON.parse(transaction.metadata) 
+          : transaction.metadata
+      };
+      sessionStorage.setItem('lastTransaction', JSON.stringify(transactionData));
+      navigate('/payment-success');
+    }
+  }, [useFullPage, transaction, navigate]);
+
+  // If redirecting to full page, show loading
+  if (useFullPage) {
+    return (
+      <div className="fixed inset-0 bg-green-500 z-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent"></div>
+      </div>
+    );
+  }
+
   // Get recipient details from transaction metadata
-  const recipientName = transaction.metadata?.recipientName || 'User';
-  const phoneNumber = transaction.metadata?.phoneNumber || '';
-  const upiId = transaction.metadata?.upiId || '';
+  const metadata = typeof transaction.metadata === 'string' 
+    ? JSON.parse(transaction.metadata) 
+    : transaction.metadata || {};
+  const recipientName = metadata?.recipientName || 'User';
+  const phoneNumber = metadata?.phoneNumber || '';
+  const upiId = metadata?.upiId || '';
   
   // Generate UPI Transaction ID and Payment ID
   const upiTransactionId = `UPI${transaction.id}${Date.now().toString().slice(-8)}${Math.random().toString(36).substring(2, 5).toUpperCase()}`;

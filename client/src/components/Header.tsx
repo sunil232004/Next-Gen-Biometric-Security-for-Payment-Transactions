@@ -41,55 +41,55 @@ export default function Header() {
 
   return (
     <>
-      <header className="bg-[#001e84] text-white px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center space-x-3">
+      <header className="bg-[#001e84] text-white px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between sticky top-0 z-10 safe-area-top">
+        <div className="flex items-center space-x-2 sm:space-x-3">
           <div 
-            className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center cursor-pointer overflow-hidden"
+            className="avatar-responsive-sm rounded-full bg-gray-200 flex items-center justify-center cursor-pointer overflow-hidden tap-target"
             onClick={handleProfile}
           >
             {user?.profileImage ? (
               <img src={user.profileImage} alt={user.name} className="w-full h-full object-cover" />
             ) : (
-              <User className="text-gray-400 h-5 w-5" />
+              <User className="text-gray-400 icon-responsive-md" />
             )}
           </div>
           <div className="flex flex-col">
-            <span className="text-xs text-gray-300">Hello,</span>
-            <span className="text-sm font-semibold">{user?.name || 'User'}</span>
+            <span className="text-[10px] sm:text-xs text-gray-300">Hello,</span>
+            <span className="text-xs sm:text-sm font-semibold truncate max-w-[100px] sm:max-w-[150px]">{user?.name || 'User'}</span>
           </div>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4">
           <button 
-            className="focus:outline-none" 
+            className="focus:outline-none tap-target" 
             onClick={handleSearch}
           >
-            <Search className="h-5 w-5" />
+            <Search className="icon-responsive-md" />
           </button>
           <button
-            className="focus:outline-none"
+            className="focus:outline-none tap-target"
             onClick={handleSettings}
           >
-            <Settings className="h-5 w-5" />
+            <Settings className="icon-responsive-md" />
           </button>
           <div className="relative">
             <button 
-              className="focus:outline-none" 
+              className="focus:outline-none tap-target" 
               onClick={handleNotifications}
             >
-              <Bell className="h-5 w-5" />
+              <Bell className="icon-responsive-md" />
             </button>
             {notificationCount > 0 && (
-              <div className="absolute -top-1 -right-1 notification-badge bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+              <div className="absolute -top-1 -right-1 notification-badge bg-red-500 text-white text-[10px] w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full">
                 <span>{notificationCount > 9 ? '9+' : notificationCount}</span>
               </div>
             )}
           </div>
           <button
-            className="focus:outline-none"
+            className="focus:outline-none tap-target"
             onClick={handleLogout}
             title="Logout"
           >
-            <LogOut className="h-5 w-5" />
+            <LogOut className="icon-responsive-md" />
           </button>
         </div>
       </header>

@@ -191,12 +191,12 @@ export default function MoneyTransfer() {
 
 
   return (
-    <div className="max-w-md mx-auto h-screen bg-white shadow-lg flex flex-col">
-      <header className="bg-[#00baf2] text-white p-4 flex items-center">
-        <button onClick={handleBack} className="mr-4">
-          <ChevronLeft className="h-6 w-6" />
+    <div className="app-container mx-auto min-h-screen bg-white shadow-lg flex flex-col">
+      <header className="bg-[#00baf2] text-white p-responsive flex items-center sticky top-0 z-10">
+        <button onClick={handleBack} className="mr-3 sm:mr-4 tap-target">
+          <ChevronLeft className="icon-responsive-lg" />
         </button>
-        <h1 className="text-xl font-semibold">
+        <h1 className="text-responsive-lg font-semibold">
           {paymentSuccess ? "Payment Successful" : "Pay to Contact/UPI ID"}
         </h1>
       </header>

@@ -134,35 +134,35 @@ export default function TransactionHistory() {
     : [];
 
   return (
-    <div className="max-w-md mx-auto h-screen bg-white shadow-lg flex flex-col">
-      <header className="bg-[#00baf2] text-white p-4 flex items-center">
-        <button onClick={handleBack} className="mr-4">
-          <ChevronLeft className="h-6 w-6" />
+    <div className="max-w-md md:max-w-lg lg:max-w-xl mx-auto h-screen bg-white shadow-lg flex flex-col">
+      <header className="bg-[#00baf2] text-white p-3 sm:p-4 flex items-center safe-area-top">
+        <button onClick={handleBack} className="mr-3 sm:mr-4 tap-target">
+          <ChevronLeft className="icon-responsive-md" />
         </button>
-        <h1 className="text-xl font-semibold">Transaction History</h1>
+        <h1 className="text-lg sm:text-xl font-semibold">Transaction History</h1>
       </header>
 
-      <div className="p-4 border-b">
+      <div className="p-3 sm:p-4 border-b">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
           <Input
             placeholder="Search transactions"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 pr-4 py-2 text-sm"
+            className="pl-9 pr-4 py-2 text-sm h-10 sm:h-11"
           />
         </div>
 
-        <div className="flex mt-3 space-x-2">
+        <div className="flex mt-2.5 sm:mt-3 space-x-2 items-center">
           <div className="flex items-center space-x-1">
             <Filter className="h-4 w-4 text-gray-500" />
-            <span className="text-sm">Filter:</span>
+            <span className="text-xs sm:text-sm">Filter:</span>
           </div>
           <Select
             value={filterType}
             onValueChange={setFilterType}
           >
-            <SelectTrigger className="h-8 text-xs border-gray-200 bg-gray-50">
+            <SelectTrigger className="h-8 sm:h-9 text-xs sm:text-sm border-gray-200 bg-gray-50 flex-1 max-w-[180px] sm:max-w-[200px]">
               <SelectValue placeholder="Filter by type" />
             </SelectTrigger>
             <SelectContent>
@@ -176,67 +176,67 @@ export default function TransactionHistory() {
         </div>
       </div>
 
-      <main className="flex-1 overflow-y-auto p-4">
+      <main className="flex-1 overflow-y-auto p-3 sm:p-4 scroll-smooth-touch safe-area-bottom">
         {isLoading ? (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {[1, 2, 3, 4, 5].map((item) => (
               <div key={item} className="flex items-center space-x-3">
-                <Skeleton className="h-10 w-10 rounded-full" />
+                <Skeleton className="h-9 w-9 sm:h-10 sm:w-10 rounded-full" />
                 <div className="space-y-2 flex-1">
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-3 w-1/2" />
                 </div>
-                <Skeleton className="h-5 w-20" />
+                <Skeleton className="h-5 w-16 sm:w-20" />
               </div>
             ))}
           </div>
         ) : error ? (
-          <div className="text-center py-10">
-            <p className="text-red-500">Failed to load transactions</p>
-            <Button onClick={() => window.location.reload()} className="mt-4">
+          <div className="text-center py-8 sm:py-10">
+            <p className="text-red-500 text-sm sm:text-base">Failed to load transactions</p>
+            <Button onClick={() => window.location.reload()} className="mt-4 btn-responsive">
               Try Again
             </Button>
           </div>
         ) : filteredTransactions.length === 0 ? (
-          <div className="text-center py-10">
-            <Clock className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">No transactions found</p>
+          <div className="text-center py-8 sm:py-10">
+            <Clock className="h-10 w-10 sm:h-12 sm:w-12 text-gray-300 mx-auto mb-2.5 sm:mb-3" />
+            <p className="text-gray-500 text-sm sm:text-base">No transactions found</p>
             {searchTerm && (
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-xs sm:text-sm text-gray-400 mt-1">
                 Try changing your search or filter
               </p>
             )}
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-2 sm:space-y-4">
             {filteredTransactions.map((transaction) => (
               <div 
                 key={transaction.id}
-                className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer"
+                className="flex items-start space-x-2.5 sm:space-x-3 p-2.5 sm:p-3 rounded-lg hover:bg-gray-50 active:bg-gray-100 cursor-pointer transition-colors"
                 onClick={() => {
                   // In a real app, navigate to transaction details
                   // navigate(`/transaction/${transaction.id}`);
                 }}
               >
-                <div className="bg-gray-100 p-2 rounded-full">
+                <div className="bg-gray-100 p-1.5 sm:p-2 rounded-full flex-shrink-0">
                   {getTransactionIcon(transaction.type)}
                 </div>
 
-                <div className="flex-1">
-                  <div className="flex justify-between">
-                    <h3 className="font-medium">
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-start gap-2">
+                    <h3 className="font-medium text-sm sm:text-base truncate">
                       {getTransactionTypeLabel(transaction.type)}
                     </h3>
-                    <span className={`font-semibold ${getTransactionColor(transaction.type)}`}>
+                    <span className={`font-semibold text-sm sm:text-base whitespace-nowrap ${getTransactionColor(transaction.type)}`}>
                       {getTransactionPrefix(transaction.type)}₹{transaction.amount}
                     </span>
                   </div>
 
-                  <div className="flex justify-between text-sm">
-                    <p className="text-gray-500 truncate max-w-[200px]">
+                  <div className="flex justify-between text-xs sm:text-sm mt-0.5">
+                    <p className="text-gray-500 truncate max-w-[140px] sm:max-w-[200px]">
                       {transaction.description || "No description"}
                     </p>
-                    <span className="text-gray-400 text-xs">
+                    <span className="text-gray-400 text-[10px] sm:text-xs whitespace-nowrap">
                       {getFormattedTime(String(transaction.createdAt || transaction.timestamp || new Date()))}
                     </span>
                   </div>

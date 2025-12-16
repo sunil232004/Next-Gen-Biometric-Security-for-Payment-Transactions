@@ -135,45 +135,45 @@ export default function AddMoney() {
   return (
     <div className="min-h-screen bg-gray-100 pb-16">
       {/* Header */}
-      <div className="bg-[#0d4bb5] text-white p-4 flex items-center justify-between">
+      <div className="bg-[#0d4bb5] text-white p-3 sm:p-4 flex items-center justify-between safe-area-top">
         <button 
-          className="flex items-center" 
+          className="flex items-center tap-target" 
           onClick={() => navigate("/")}
         >
-          <ChevronLeft size={24} />
-          <span className="ml-2">Back</span>
+          <ChevronLeft className="icon-responsive-md" />
+          <span className="ml-1 sm:ml-2 text-sm sm:text-base">Back</span>
         </button>
-        <h1 className="text-lg font-semibold">Add Money</h1>
+        <h1 className="text-base sm:text-lg font-semibold">Add Money</h1>
         <div className="w-8"></div>
       </div>
 
-      <div className="p-4">
+      <div className="p-3 sm:p-4 max-w-md md:max-w-lg mx-auto">
         {isSuccess ? (
-          <div className="bg-white rounded-lg shadow-md p-6 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="h-8 w-8 text-green-600" />
+          <div className="bg-white rounded-lg shadow-md p-5 sm:p-6 text-center">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+              <Check className="h-7 w-7 sm:h-8 sm:w-8 text-green-600" />
             </div>
-            <h2 className="text-xl font-semibold mb-2">Payment Successful!</h2>
-            <p className="text-gray-600 mb-4">₹{amount} has been added to your wallet</p>
-            <p className="text-gray-500 text-sm">Redirecting to home...</p>
+            <h2 className="text-lg sm:text-xl font-semibold mb-2">Payment Successful!</h2>
+            <p className="text-gray-600 text-sm sm:text-base mb-3 sm:mb-4">₹{amount} has been added to your wallet</p>
+            <p className="text-gray-500 text-xs sm:text-sm">Redirecting to home...</p>
           </div>
         ) : (
           <>
-            <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-              <div className="mb-6">
-                <label htmlFor="amount" className="block text-gray-600 mb-2">Enter Amount (₹)</label>
+            <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 mb-3 sm:mb-4">
+              <div className="mb-5 sm:mb-6">
+                <label htmlFor="amount" className="block text-gray-600 text-sm sm:text-base mb-1.5 sm:mb-2">Enter Amount (₹)</label>
                 <input
                   type="number"
                   id="amount"
                   value={amount || ''}
                   onChange={(e) => setAmount(Number(e.target.value))}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+                  className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-base sm:text-lg"
                   placeholder="0"
                   required
                 />
               </div>
 
-              <div className="flex flex-col space-y-3">
+              <div className="flex flex-col space-y-2.5 sm:space-y-3">
                 <button
                   onClick={() => {
                     if (amount <= 0) {
@@ -187,9 +187,9 @@ export default function AddMoney() {
                     // Navigate to Stripe checkout
                     navigate(`/checkout?amount=${amount}&purpose=wallet_recharge`);
                   }}
-                  className="w-full bg-[#0d4bb5] text-white py-3 rounded-md font-medium flex items-center justify-center"
+                  className="w-full bg-[#0d4bb5] text-white py-2.5 sm:py-3 rounded-md font-medium flex items-center justify-center text-sm sm:text-base active:bg-[#0a3d96] transition-colors"
                 >
-                  <Wallet className="mr-2 h-5 w-5" />
+                  <Wallet className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                   Pay with Stripe
                 </button>
 
@@ -204,65 +204,65 @@ export default function AddMoney() {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-4">
-              <div className="mb-4">
-                <label htmlFor="cardNumber" className="block text-gray-600 mb-2">Card Number</label>
+            <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-3 sm:p-4">
+              <div className="mb-3 sm:mb-4">
+                <label htmlFor="cardNumber" className="block text-gray-600 text-sm sm:text-base mb-1.5 sm:mb-2">Card Number</label>
                 <div className="relative">
                   <input
                     type="text"
                     id="cardNumber"
                     value={cardNumber}
                     onChange={handleCardNumberChange}
-                    className="w-full p-3 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2.5 sm:p-3 pl-9 sm:pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                     placeholder="1234 5678 9012 3456"
                     required
                   />
-                  <CreditCardIcon className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                  <CreditCardIcon className="absolute left-2.5 sm:left-3 top-3 sm:top-3.5 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                 </div>
               </div>
 
-              <div className="flex space-x-4 mb-4">
+              <div className="flex space-x-3 sm:space-x-4 mb-3 sm:mb-4">
                 <div className="w-1/2">
-                  <label htmlFor="expiryDate" className="block text-gray-600 mb-2">Expiry Date</label>
+                  <label htmlFor="expiryDate" className="block text-gray-600 text-sm sm:text-base mb-1.5 sm:mb-2">Expiry Date</label>
                   <div className="relative">
                     <input
                       type="text"
                       id="expiryDate"
                       value={expiryDate}
                       onChange={handleExpiryDateChange}
-                      className="w-full p-3 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-2.5 sm:p-3 pl-9 sm:pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                       placeholder="MM/YY"
                       required
                     />
-                    <Calendar className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                    <Calendar className="absolute left-2.5 sm:left-3 top-3 sm:top-3.5 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                   </div>
                 </div>
 
                 <div className="w-1/2">
-                  <label htmlFor="cvv" className="block text-gray-600 mb-2">CVV</label>
+                  <label htmlFor="cvv" className="block text-gray-600 text-sm sm:text-base mb-1.5 sm:mb-2">CVV</label>
                   <div className="relative">
                     <input
                       type="password"
                       id="cvv"
                       value={cvv}
                       onChange={(e) => setCvv(e.target.value.replace(/\D/g, '').substring(0, 3))}
-                      className="w-full p-3 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-2.5 sm:p-3 pl-9 sm:pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                       placeholder="123"
                       required
                     />
-                    <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                    <Lock className="absolute left-2.5 sm:left-3 top-3 sm:top-3.5 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                   </div>
                 </div>
               </div>
 
-              <div className="mb-6">
-                <label htmlFor="cardholderName" className="block text-gray-600 mb-2">Cardholder Name</label>
+              <div className="mb-5 sm:mb-6">
+                <label htmlFor="cardholderName" className="block text-gray-600 text-sm sm:text-base mb-1.5 sm:mb-2">Cardholder Name</label>
                 <input
                   type="text"
                   id="cardholderName"
                   value={cardholderName}
                   onChange={(e) => setCardholderName(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                   placeholder="John Doe"
                   required
                 />
@@ -270,13 +270,13 @@ export default function AddMoney() {
 
               <button
                 type="submit"
-                className="w-full bg-[#0d4bb5] text-white py-3 rounded-md font-medium flex items-center justify-center"
+                className="w-full bg-[#0d4bb5] text-white py-2.5 sm:py-3 rounded-md font-medium flex items-center justify-center text-sm sm:text-base active:bg-[#0a3d96] transition-colors disabled:opacity-50"
                 disabled={isProcessing}
               >
                 {isProcessing ? 'Processing...' : 'Add Money with Card'}
               </button>
 
-              <p className="text-xs text-gray-500 mt-4 text-center">
+              <p className="text-[10px] sm:text-xs text-gray-500 mt-3 sm:mt-4 text-center">
                 Your card details are securely processed. We do not store your full card information.
               </p>
             </form>

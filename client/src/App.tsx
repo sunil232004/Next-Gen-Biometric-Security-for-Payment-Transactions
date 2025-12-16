@@ -25,6 +25,7 @@ import AllServices from "@/pages/AllServices";
 import PersonalLoan from "@/pages/PersonalLoan";
 import PersonalLoanApplication from "@/pages/PersonalLoanApplication";
 import PersonalLoanApproved from "@/pages/PersonalLoanApproved";
+import PaymentSuccess from "@/pages/PaymentSuccess";
 import { Loader2 } from "lucide-react";
 
 // Protected route wrapper
@@ -110,6 +111,9 @@ function Router() {
       </Route>
       <Route path="/personal-loan/approved">
         {() => <ProtectedRoute component={PersonalLoanApproved} />}
+      </Route>
+      <Route path="/payment-success">
+        {() => <ProtectedRoute component={PaymentSuccess} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

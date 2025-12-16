@@ -9,19 +9,19 @@ export default function RechargesBillsSection() {
   const rechargeBillOptions = [
     {
       id: "mobile-recharge",
-      icon: <Smartphone className="text-[#0d4bb5] h-6 w-6" />,
+      icon: <Smartphone className="text-[#0d4bb5] icon-responsive-lg" />,
       title: "Mobile Recharge",
       path: "/mobile-recharge"
     },
     {
       id: "electricity-bill",
-      icon: <Lightbulb className="text-[#0d4bb5] h-6 w-6" />,
+      icon: <Lightbulb className="text-[#0d4bb5] icon-responsive-lg" />,
       title: "Electricity Bill",
       path: "/electricity-bill"
     },
     {
       id: "credit-card",
-      icon: <CreditCard className="text-[#0d4bb5] h-6 w-6" />,
+      icon: <CreditCard className="text-[#0d4bb5] icon-responsive-lg" />,
       title: "Credit Card",
       path: "/",
       onClick: () => {
@@ -33,7 +33,7 @@ export default function RechargesBillsSection() {
     },
     {
       id: "my-bills",
-      icon: <Receipt className="text-[#0d4bb5] h-6 w-6" />,
+      icon: <Receipt className="text-[#0d4bb5] icon-responsive-lg" />,
       title: "My Bills",
       path: "/transaction-history"
     }
@@ -48,11 +48,11 @@ export default function RechargesBillsSection() {
   };
 
   return (
-    <div className="px-4 py-3 mt-2">
-      <div className="flex justify-between items-center mb-3">
-        <h2 className="font-semibold text-[#333333]">RECHARGES &amp; BILL PAYMENTS</h2>
+    <div className="px-3 sm:px-4 py-2.5 sm:py-3 mt-2">
+      <div className="flex justify-between items-center mb-2.5 sm:mb-3">
+        <h2 className="font-semibold text-[#333333] text-sm sm:text-base">RECHARGES &amp; BILL PAYMENTS</h2>
         <button 
-          className="text-[#0d4bb5] text-sm flex items-center"
+          className="text-[#0d4bb5] text-xs sm:text-sm flex items-center hover:underline active:opacity-70 transition-opacity tap-target-inline"
           onClick={() => navigate("/all-services")}
         >
           View all
@@ -73,17 +73,17 @@ export default function RechargesBillsSection() {
         </button>
       </div>
       
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-4 gap-2 sm:gap-3 md:gap-4">
         {rechargeBillOptions.map((option) => (
           <div 
             key={option.id} 
-            className="flex flex-col items-center cursor-pointer"
+            className="flex flex-col items-center cursor-pointer tap-target group transition-transform active:scale-95"
             onClick={() => navigateToPath(option)}
           >
-            <div className="bg-white p-2 rounded-lg shadow-sm mb-2 w-14 h-14 flex items-center justify-center hover:bg-gray-50">
+            <div className="bg-white p-1.5 sm:p-2 rounded-lg shadow-sm mb-1.5 sm:mb-2 w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 flex items-center justify-center group-hover:bg-gray-50 transition-colors">
               {option.icon}
             </div>
-            <span className="text-xs text-center whitespace-pre-line">
+            <span className="text-[10px] sm:text-xs text-center leading-tight line-clamp-2">
               {option.title.replace(/ /g, '\n')}
             </span>
           </div>

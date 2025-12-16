@@ -9,14 +9,14 @@ export default function BottomNavigation() {
   const navItems = [
     { 
       id: "home", 
-      icon: <Home className="h-5 w-5" />, 
+      icon: <Home className="icon-responsive-md" />, 
       label: "Home", 
       path: "/",
       active: location === "/" 
     },
     { 
       id: "stores", 
-      icon: <Store className="h-5 w-5" />, 
+      icon: <Store className="icon-responsive-md" />, 
       label: "Stores", 
       onClick: () => {
         toast({
@@ -28,7 +28,7 @@ export default function BottomNavigation() {
     },
     { 
       id: "scan", 
-      icon: <IndianRupee className="h-6 w-6 text-white" />, 
+      icon: <IndianRupee className="h-6 w-6 sm:h-7 sm:w-7 text-white" />, 
       label: "", 
       onClick: () => {
         toast({
@@ -40,14 +40,14 @@ export default function BottomNavigation() {
     },
     { 
       id: "history", 
-      icon: <History className="h-5 w-5" />, 
+      icon: <History className="icon-responsive-md" />, 
       label: "History", 
       path: "/transaction-history",
       active: location === "/transaction-history" 
     },
     { 
       id: "banking", 
-      icon: <Building className="h-5 w-5" />, 
+      icon: <Building className="icon-responsive-md" />, 
       label: "Banking", 
       onClick: () => {
         toast({
@@ -68,31 +68,33 @@ export default function BottomNavigation() {
   };
 
   return (
-    <nav className="bg-white border-t border-[#e1e1e1] py-2 px-4 grid grid-cols-5 fixed bottom-0 w-full max-w-md mx-auto shadow-lg safe-bottom">
-      {navItems.map((item, index) => (
-        index === 2 ? (
-          <div 
-            key={item.id} 
-            className="flex justify-center"
-            onClick={() => handleNavClick(item)}
-          >
-            <div className="w-12 h-12 -mt-6 rounded-full bg-[#0d4bb5] flex items-center justify-center cursor-pointer">
-              {item.icon}
+    <nav className="bottom-nav shadow-lg z-40">
+      <div className="app-container mx-auto grid grid-cols-5 py-2 px-2 sm:px-4">
+        {navItems.map((item, index) => (
+          index === 2 ? (
+            <div 
+              key={item.id} 
+              className="flex justify-center"
+              onClick={() => handleNavClick(item)}
+            >
+              <div className="w-12 h-12 sm:w-14 sm:h-14 -mt-6 sm:-mt-7 rounded-full bg-[#0d4bb5] flex items-center justify-center cursor-pointer shadow-lg tap-target hover:bg-[#0a3d96] transition-colors">
+                {item.icon}
+              </div>
             </div>
-          </div>
-        ) : (
-          <button 
-            key={item.id} 
-            className="flex flex-col items-center space-y-1"
-            onClick={() => handleNavClick(item)}
-          >
-            <div className={item.active ? "text-[#0d4bb5]" : "text-gray-500"}>
-              {item.icon}
-            </div>
-            <span className={`text-[10px] ${item.active ? "text-[#0d4bb5]" : "text-gray-500"}`}>{item.label}</span>
-          </button>
-        )
-      ))}
+          ) : (
+            <button 
+              key={item.id} 
+              className="flex flex-col items-center space-y-0.5 sm:space-y-1 tap-target"
+              onClick={() => handleNavClick(item)}
+            >
+              <div className={item.active ? "text-[#0d4bb5]" : "text-gray-500"}>
+                {item.icon}
+              </div>
+              <span className={`text-[10px] sm:text-xs ${item.active ? "text-[#0d4bb5] font-medium" : "text-gray-500"}`}>{item.label}</span>
+            </button>
+          )
+        ))}
+      </div>
     </nav>
   );
 }
