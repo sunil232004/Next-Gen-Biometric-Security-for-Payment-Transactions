@@ -131,8 +131,17 @@ export default function MoneyTransfer() {
         body: transactionData
       });
 
-      // Get the transaction data from response
-      const transaction = response;
+      // Merge server response with original data (server may not return all fields)
+      const serverTransaction = response?.transaction || response;
+      const transaction = {
+        ...transactionData,
+        ...serverTransaction,
+        id: serverTransaction?.id || serverTransaction?._id || Date.now(),
+        amount: parseFloat(amount),
+        description: transactionData.description,
+        authMethod: authMethod,
+        metadata: transactionData.metadata
+      };
 
       // Set the completed transaction data
       setCompletedTransaction(transaction);
