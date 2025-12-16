@@ -4,6 +4,7 @@ import { ChevronLeft, Clock, Search, ArrowDown, ArrowUp, Zap, ReceiptText, Filte
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { getApiUrl } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -31,20 +32,25 @@ interface Transaction {
 
 export default function TransactionHistory() {
   const [_, navigate] = useLocation();
+  const { user } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
 
+  // Get user ID - support both MongoDB _id (string) and legacy numeric id
+  const userId = user?._id || '1';
+
   // Fetch transactions
   const { data: transactions, isLoading, error } = useQuery({
-    queryKey: ["/api/transactions/1"], // Assuming userId is 1 for demo
+    queryKey: [`/api/transactions/${userId}`],
     queryFn: async () => {
-      const response = await fetch(getApiUrl("/api/transactions/1"));
+      const response = await fetch(getApiUrl(`/api/transactions/${userId}`));
       if (!response.ok) {
         throw new Error("Failed to fetch transactions");
       }
       return response.json() as Promise<Transaction[]>;
-    }
+    },
+    enabled: !!userId
   });
 
   const handleBack = () => {

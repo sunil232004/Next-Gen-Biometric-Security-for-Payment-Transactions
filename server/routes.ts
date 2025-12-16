@@ -165,12 +165,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Legacy: Get user transactions
   app.get("/api/transactions/:userId", async (req, res) => {
     try {
-      const userId = parseInt(req.params.userId);
-      if (isNaN(userId)) {
-        return res.status(400).json({ message: "Invalid user ID" });
-      }
+      const userId = req.params.userId;
+      // Support both string (MongoDB ObjectId) and numeric IDs
+      const numericUserId = parseInt(userId);
+      const queryUserId = isNaN(numericUserId) ? userId : numericUserId;
 
-      const transactions = await legacyStorage.getUserTransactions(userId);
+      const transactions = await legacyStorage.getUserTransactions(queryUserId as any);
       return res.json(transactions);
     } catch (error) {
       console.error("Error fetching transactions:", error);

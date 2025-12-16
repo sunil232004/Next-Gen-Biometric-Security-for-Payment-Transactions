@@ -245,11 +245,18 @@ export class MongoDBStorage implements IStorage {
     }
   }
 
-  async getUserTransactions(userId: number): Promise<Transaction[]> {
+  async getUserTransactions(userId: number | string): Promise<Transaction[]> {
     try {
       const db = getDb();
+      // Support both string and numeric userId queries
       const transactions = await db.collection('transactions')
-        .find({ userId })
+        .find({ 
+          $or: [
+            { userId: userId },
+            { userId: String(userId) },
+            { userId: typeof userId === 'string' ? parseInt(userId) : userId }
+          ]
+        })
         .sort({ createdAt: -1 })
         .toArray();
       return transactions.map(documentToTransaction);

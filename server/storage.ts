@@ -19,7 +19,7 @@ export interface IStorage {
   
   // Transaction methods
   createTransaction(transactionData: InsertTransaction): Promise<Transaction>;
-  getUserTransactions(userId: number): Promise<Transaction[]>;
+  getUserTransactions(userId: number | string): Promise<Transaction[]>;
   
   // UPI PIN methods
   setUPIPin(userId: number, upiPin: string): Promise<boolean>;
