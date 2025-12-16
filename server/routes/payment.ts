@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import Stripe from 'stripe';
-import { PaymentService } from '../services/payment.service';
-import { getDb } from '../mongodb';
+import { PaymentService } from '../services/payment.service.js';
+import { getDb } from '../mongodb.js';
 
 const router = Router();
 

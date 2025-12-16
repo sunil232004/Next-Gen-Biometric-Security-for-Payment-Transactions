@@ -1,6 +1,6 @@
 import { ObjectId, Document } from 'mongodb';
-import { getDb } from './mongodb';
-import { IStorage } from './storage';
+import { getDb } from './mongodb.js';
+import { IStorage } from './storage.js';
 import {
   User,
   Service,
@@ -10,8 +10,8 @@ import {
   InsertService,
   InsertTransaction,
   InsertBiometricAuth
-} from './schema';
-import { log } from './logger';
+} from './schema.js';
+import { log } from './logger.js';
 
 // Helper function to convert MongoDB document to a User object
 function documentToUser(doc: Document): User {

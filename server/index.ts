@@ -1,9 +1,9 @@
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
-import { registerRoutes } from "./routes";
-import { connectToDatabase, createCollections, closeConnection } from "./mongodb";
-import { MongoDBStorage } from "./mongodbStorage";
+import { registerRoutes } from "./routes.js";
+import { connectToDatabase, createCollections, closeConnection } from "./mongodb.js";
+import { MongoDBStorage } from "./mongodbStorage.js";
 
 const isVercel = !!process.env.VERCEL;
 

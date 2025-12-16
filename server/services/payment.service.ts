@@ -1,5 +1,5 @@
 import { Collection, Db } from 'mongodb';
-import { Payment, PAYMENTS_COLLECTION, createPaymentDocument } from '../models/payment';
+import { Payment, PAYMENTS_COLLECTION, createPaymentDocument } from '../models/payment.js';
 
 export class PaymentService {
   private collection: Collection<Payment>;

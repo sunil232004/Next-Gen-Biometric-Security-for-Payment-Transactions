@@ -1,15 +1,15 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { mongoStorage as storage } from "./index";
+import { mongoStorage as storage } from "./index.js";
 import { z } from "zod";
 import { 
   insertUserSchema, 
   insertTransactionSchema, 
   insertBiometricAuthSchema 
-} from "./schema";
+} from "./schema.js";
 import Stripe from "stripe";
 import { WebSocket } from 'ws';
-import { wss as globalWss } from './index';
+import { wss as globalWss } from './index.js';
 
 // Initialize Stripe with the secret key if provided. Do not crash the app
 // when the key is missing — instead expose payment endpoints as unavailable.

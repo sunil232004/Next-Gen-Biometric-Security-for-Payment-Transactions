@@ -7,7 +7,7 @@ import {
   InsertService,
   InsertTransaction,
   InsertBiometricAuth
-} from './schema';
+} from './schema.js';
 
 // Interface for storage methods
 export interface IStorage {

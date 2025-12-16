@@ -1,6 +1,6 @@
 import { MongoClient, Db } from 'mongodb';
-import { log } from './logger';
-import { PAYMENTS_COLLECTION } from './models/payment';
+import { log } from './logger.js';
+import { PAYMENTS_COLLECTION } from './models/payment.js';
 
 let client: MongoClient;
 let db: Db | any;
