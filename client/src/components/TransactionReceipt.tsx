@@ -11,6 +11,7 @@ interface TransactionReceiptProps {
     timestamp: string;
     type: string;
     status: string;
+    description?: string;
     authMethod?: string;
     metadata?: any;
   };
@@ -26,6 +27,11 @@ export default function TransactionReceipt({ transaction, onClose, useFullPage =
   // Redirect to full page payment success if enabled
   useEffect(() => {
     if (useFullPage && transaction) {
+      // Parse metadata if it's a string
+      const parsedMetadata = typeof transaction.metadata === 'string' 
+        ? JSON.parse(transaction.metadata) 
+        : transaction.metadata || {};
+      
       // Store transaction in sessionStorage for the success page
       const transactionData = {
         id: transaction.id?.toString() || `TXN${Date.now()}`,
@@ -34,10 +40,13 @@ export default function TransactionReceipt({ transaction, onClose, useFullPage =
         type: transaction.type,
         status: transaction.status,
         authMethod: transaction.authMethod || 'biometric',
-        description: transaction.metadata?.description,
-        metadata: typeof transaction.metadata === 'string' 
-          ? JSON.parse(transaction.metadata) 
-          : transaction.metadata
+        description: transaction.description || parsedMetadata?.description || 'Payment',
+        metadata: {
+          recipientName: parsedMetadata?.recipientName || '',
+          phoneNumber: parsedMetadata?.phoneNumber || '',
+          upiId: parsedMetadata?.upiId || '',
+          note: parsedMetadata?.note || ''
+        }
       };
       sessionStorage.setItem('lastTransaction', JSON.stringify(transactionData));
       navigate('/payment-success');
