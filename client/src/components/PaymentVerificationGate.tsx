@@ -196,7 +196,7 @@ export default function PaymentVerificationGate({
     }
   };
 
-  // Face verification
+  // Face verification - auto-capture for payment (quick verification)
   const startFaceCapture = async () => {
     setIsProcessing(true);
     setError(null);
@@ -210,6 +210,11 @@ export default function PaymentVerificationGate({
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
+        
+        // Auto-capture after 2.5 seconds for quick payment verification
+        setTimeout(() => {
+          captureFaceAndVerify();
+        }, 2500);
       }
     } catch (err: any) {
       console.error('Camera error:', err);
@@ -345,11 +350,8 @@ export default function PaymentVerificationGate({
         handleFingerprintVerify();
         break;
       case 'face':
-        if (!mediaStreamRef.current) {
-          startFaceCapture();
-        } else {
-          captureFaceAndVerify();
-        }
+        // Auto-capture flow - just start camera, it will auto-capture
+        startFaceCapture();
         break;
       case 'voice':
         startVoiceRecording();

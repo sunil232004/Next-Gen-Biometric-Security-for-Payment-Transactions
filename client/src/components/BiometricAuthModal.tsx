@@ -51,6 +51,7 @@ export default function BiometricAuthModal({
   const [scanSuccess, setScanSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [label, setLabel] = useState("");
+  const [cameraReady, setCameraReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -72,11 +73,13 @@ export default function BiometricAuthModal({
     if (videoRef.current && videoRef.current.srcObject) {
       const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
       tracks.forEach(track => track.stop());
+      videoRef.current.srcObject = null;
     }
     
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
+    setCameraReady(false);
   };
 
   const resetState = () => {
@@ -85,6 +88,7 @@ export default function BiometricAuthModal({
     setScanComplete(false);
     setScanSuccess(false);
     setErrorMessage("");
+    setCameraReady(false);
     stopMediaTracks();
   };
 
@@ -176,8 +180,8 @@ export default function BiometricAuthModal({
 
   const startFaceScan = async () => {
     setActiveMethod('face');
-    setScanning(true);
     setErrorMessage("");
+    setCameraReady(false);
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -186,31 +190,49 @@ export default function BiometricAuthModal({
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        setCameraReady(true);
       }
 
-      // Capture after 3 seconds
-      timerRef.current = setTimeout(() => {
-        if (canvasRef.current && videoRef.current) {
-          const context = canvasRef.current.getContext('2d');
-          if (context) {
-            canvasRef.current.width = videoRef.current.videoWidth;
-            canvasRef.current.height = videoRef.current.videoHeight;
-            context.drawImage(videoRef.current, 0, 0);
-            
-            const faceData = canvasRef.current.toDataURL('image/png');
-            if (mode === 'register') {
-              registerBiometric('face', faceData);
-            } else {
-              verifyBiometric('face', faceData);
-            }
-          }
-        }
-        stopMediaTracks();
-      }, 3001);
+      // Auto-capture for verify mode (quick verification for payments)
+      // Manual capture for register mode (user needs to position face properly)
+      if (mode === 'verify') {
+        setScanning(true);
+        timerRef.current = setTimeout(() => {
+          captureFaceNow();
+        }, 2500);
+      }
     } catch (error) {
       console.error("Error accessing camera:", error);
       setScanning(false);
+      setCameraReady(false);
       setErrorMessage("Could not access camera. Please check permissions.");
+    }
+  };
+
+  // Manual capture function for face
+  const captureFaceNow = () => {
+    if (!canvasRef.current || !videoRef.current) {
+      setErrorMessage("Camera not ready");
+      return;
+    }
+    
+    setScanning(true);
+    
+    const context = canvasRef.current.getContext('2d');
+    if (context) {
+      canvasRef.current.width = videoRef.current.videoWidth;
+      canvasRef.current.height = videoRef.current.videoHeight;
+      context.drawImage(videoRef.current, 0, 0);
+      
+      const faceData = canvasRef.current.toDataURL('image/png');
+      stopMediaTracks();
+      
+      if (mode === 'register') {
+        registerBiometric('face', faceData);
+      } else {
+        verifyBiometric('face', faceData);
+      }
     }
   };
 
@@ -450,6 +472,41 @@ export default function BiometricAuthModal({
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-6">
+              {/* Face Camera Ready - waiting for manual capture (register mode) */}
+              {activeMethod === 'face' && cameraReady && !scanning && !scanComplete && (
+                <div className="text-center">
+                  <div className="relative mb-4">
+                    <video 
+                      ref={videoRef} 
+                      autoPlay 
+                      playsInline 
+                      muted 
+                      className="w-64 h-48 bg-black rounded mx-auto"
+                    ></video>
+                    <div className="absolute inset-0 border-4 border-green-400 rounded"></div>
+                    <canvas ref={canvasRef} className="hidden"></canvas>
+                  </div>
+                  <p className="text-lg font-medium">Position your face in the frame</p>
+                  <p className="text-sm text-gray-500 mt-1 mb-4">Click Capture when ready</p>
+                  <div className="flex gap-2 justify-center">
+                    <button
+                      onClick={() => {
+                        resetState();
+                      }}
+                      className="px-4 py-2 border border-gray-300 rounded text-sm font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={captureFaceNow}
+                      className="px-6 py-2 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700"
+                    >
+                      Capture
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Scanning UI */}
               {scanning && (
                 <div className="text-center">

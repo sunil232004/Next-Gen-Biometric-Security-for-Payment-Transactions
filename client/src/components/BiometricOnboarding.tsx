@@ -57,6 +57,7 @@ export default function BiometricOnboarding({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [webAuthnAvailable, setWebAuthnAvailable] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   
   // Camera and microphone refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -74,6 +75,7 @@ export default function BiometricOnboarding({
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    setCameraReady(false);
   }, []);
 
   // Check WebAuthn availability on mount
@@ -191,8 +193,8 @@ export default function BiometricOnboarding({
 
   // Face setup
   const startFaceCapture = async () => {
-    setIsProcessing(true);
     setError(null);
+    setCameraReady(false);
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -203,11 +205,12 @@ export default function BiometricOnboarding({
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
+        setCameraReady(true);
       }
     } catch (err: any) {
       console.error('Camera error:', err);
       setError('Unable to access camera. Please grant camera permissions.');
-      setIsProcessing(false);
+      setCameraReady(false);
     }
   };
 
@@ -308,7 +311,7 @@ export default function BiometricOnboarding({
         handleFingerprintSetup();
         break;
       case 'face':
-        if (!mediaStreamRef.current) {
+        if (!cameraReady) {
           startFaceCapture();
         } else {
           captureFace();
@@ -589,7 +592,7 @@ export default function BiometricOnboarding({
                         playsInline
                         muted
                       />
-                      {!mediaStreamRef.current && !isProcessing && (
+                      {!cameraReady && (
                         <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
                           <Camera className="w-16 h-16 text-gray-400" />
                         </div>
@@ -601,8 +604,8 @@ export default function BiometricOnboarding({
                 <p className="mt-4 text-sm text-gray-500">
                   {isProcessing ? 'Processing...' : 
                    setupComplete.face ? 'Face registered!' : 
-                   mediaStreamRef.current ? 'Click Capture when ready' : 
-                   'Click to start camera'}
+                   cameraReady ? 'Position your face and click Capture' : 
+                   'Click Start Camera to begin'}
                 </p>
               </div>
 
@@ -623,7 +626,7 @@ export default function BiometricOnboarding({
                       Continue
                       <ChevronRight className="ml-2 w-4 h-4" />
                     </>
-                  ) : mediaStreamRef.current ? (
+                  ) : cameraReady ? (
                     'Capture Face'
                   ) : (
                     'Start Camera'

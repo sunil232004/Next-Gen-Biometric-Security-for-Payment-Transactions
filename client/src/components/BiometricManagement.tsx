@@ -74,6 +74,7 @@ export default function BiometricManagement({ isOpen, onClose }: BiometricManage
   const [newLabel, setNewLabel] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
   
   // Camera and mic refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -91,6 +92,7 @@ export default function BiometricManagement({ isOpen, onClose }: BiometricManage
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    setCameraReady(false);
   }, []);
 
   // Check WebAuthn availability
@@ -375,8 +377,8 @@ export default function BiometricManagement({ isOpen, onClose }: BiometricManage
 
   // Capture face
   const startFaceCapture = async () => {
-    setIsProcessing(true);
     setError(null);
+    setCameraReady(false);
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -387,11 +389,11 @@ export default function BiometricManagement({ isOpen, onClose }: BiometricManage
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
+        setCameraReady(true);
       }
-      setIsProcessing(false);
     } catch (err: any) {
       setError('Unable to access camera. Please grant camera permissions.');
-      setIsProcessing(false);
+      setCameraReady(false);
     }
   };
 
@@ -645,8 +647,8 @@ export default function BiometricManagement({ isOpen, onClose }: BiometricManage
                           playsInline
                           muted
                         />
-                        {!mediaStreamRef.current && !isProcessing && (
-                          <div className="absolute inset-0 flex items-center justify-center">
+{!cameraReady && !isProcessing && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
                             <Camera className="w-12 h-12 text-gray-400" />
                           </div>
                         )}
@@ -654,8 +656,8 @@ export default function BiometricManagement({ isOpen, onClose }: BiometricManage
                       <canvas ref={canvasRef} className="hidden" />
                       <p className="text-sm text-gray-600">
                         {isProcessing ? 'Processing...' : 
-                         mediaStreamRef.current ? 'Click Capture when ready' : 
-                         'Click button to start camera'}
+                         cameraReady ? 'Position your face and click Capture' : 
+                         'Click Start to open camera'}
                       </p>
                     </div>
                   )}
@@ -708,7 +710,7 @@ export default function BiometricManagement({ isOpen, onClose }: BiometricManage
                     onClick={() => {
                       if (newBiometricType === 'fingerprint') captureFingerprint();
                       else if (newBiometricType === 'face') {
-                        if (mediaStreamRef.current) captureFace();
+                        if (cameraReady) captureFace();
                         else startFaceCapture();
                       }
                       else if (newBiometricType === 'voice') startVoiceRecording();
@@ -720,7 +722,7 @@ export default function BiometricManagement({ isOpen, onClose }: BiometricManage
                         <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                         Processing...
                       </>
-                    ) : newBiometricType === 'face' && mediaStreamRef.current ? (
+                    ) : newBiometricType === 'face' && cameraReady ? (
                       'Capture'
                     ) : (
                       'Start'
