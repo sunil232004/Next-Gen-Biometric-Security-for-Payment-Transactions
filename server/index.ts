@@ -78,6 +78,36 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
+// Favicon routes - return a simple 1x1 transparent PNG to prevent 404 errors
+const FAVICON_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs><linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" style="stop-color:#00239C;stop-opacity:1" />
+    <stop offset="100%" style="stop-color:#0d4bb5;stop-opacity:1" />
+  </linearGradient></defs>
+  <rect width="100" height="100" rx="20" fill="url(#grad)"/>
+  <text x="50" y="68" font-family="Arial" font-size="50" font-weight="bold" fill="white" text-anchor="middle">P</text>
+  <circle cx="75" cy="25" r="12" fill="#00D09C"/>
+</svg>`;
+
+app.get('/favicon.ico', (req, res) => {
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Cache-Control', 'public, max-age=31536000');
+  res.send(FAVICON_PNG);
+});
+
+app.get('/favicon.png', (req, res) => {
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Cache-Control', 'public, max-age=31536000');
+  res.send(FAVICON_PNG);
+});
+
+app.get('/favicon.svg', (req, res) => {
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('Cache-Control', 'public, max-age=31536000');
+  res.send(FAVICON_SVG);
+});
+
 // Health check (before initialization)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', initialized: isInitialized, timestamp: new Date().toISOString() });
