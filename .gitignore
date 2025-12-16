@@ -1,19 +1,28 @@
-node_modules
-dist
-.DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Build outputs
+dist/
+client/dist/
+server/dist/
+
+# Environment files
 .env
 .env.local
 client/.env
 client/.env.local
-.vercel
-client/node_modules
-server/node_modules
-attached_assets.*
+server/.env
+server/.env.local
 
-# Local Netlify folder
+# IDE
+.DS_Store
+.vscode/
+
+# Deployment
+.vercel
 .netlify
 
-error.txt
+# Logs
+*.log
