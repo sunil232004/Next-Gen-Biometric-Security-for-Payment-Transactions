@@ -7,22 +7,24 @@ import {
   insertTransactionSchema, 
   insertBiometricAuthSchema 
 } from "./schema.js";
-import Stripe from "stripe";
+import { createStripeInstance, simulateSuccessfulPayment, getPaymentStatus, MockStripe } from "./services/stripe.js";
 import { WebSocket } from 'ws';
 import { wss as globalWss } from './index.js';
 
-// Initialize Stripe with the secret key if provided. Do not crash the app
-// when the key is missing — instead expose payment endpoints as unavailable.
-let stripe: Stripe | null = null;
+// Initialize mock Stripe with the secret key if provided.
+// This uses our mock implementation, not real Stripe.
+let stripe: MockStripe | null = null;
 if (process.env.STRIPE_SECRET_KEY) {
   try {
-    stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    stripe = createStripeInstance(process.env.STRIPE_SECRET_KEY);
+    console.log('[Stripe] Mock payment gateway initialized');
   } catch (err) {
-    console.warn('Failed to initialize Stripe:', err);
+    console.warn('Failed to initialize mock Stripe:', err);
     stripe = null;
   }
 } else {
-  console.warn('STRIPE_SECRET_KEY not set — Stripe endpoints will return 503');
+  console.warn('STRIPE_SECRET_KEY not set — Payment endpoints will use default mock key');
+  stripe = createStripeInstance('sk_test_mock_default_key');
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -475,9 +477,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const { paymentIntentId } = req.body;
 
-      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      // Use mock to simulate payment success
+      const paymentIntent = await simulateSuccessfulPayment(paymentIntentId);
 
-      if (paymentIntent.status === "succeeded") {
+      if (paymentIntent && paymentIntent.status === "succeeded") {
         // Create a transaction record
         const transaction = await storage.createTransaction({
           userId: req.body.userId,
