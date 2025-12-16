@@ -1,5 +1,5 @@
 import { MongoClient, Db } from 'mongodb';
-import { log } from './vite';
+import { log } from './logger';
 import { PAYMENTS_COLLECTION } from './models/payment';
 
 let client: MongoClient;

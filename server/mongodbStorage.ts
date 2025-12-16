@@ -10,8 +10,8 @@ import {
   InsertService,
   InsertTransaction,
   InsertBiometricAuth
-} from '../shared/schema';
-import { log } from './vite';
+} from './schema';
+import { log } from './logger';
 
 // Helper function to convert MongoDB document to a User object
 function documentToUser(doc: Document): User {

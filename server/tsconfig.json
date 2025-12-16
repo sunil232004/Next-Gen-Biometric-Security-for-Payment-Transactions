@@ -13,12 +13,8 @@
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,
-    "noEmit": true,
-    "baseUrl": ".",
-    "paths": {
-      "@shared/*": ["../shared/*"]
-    }
+    "noEmit": true
   },
-  "include": ["./**/*.ts", "../shared/**/*.ts"],
+  "include": ["./**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

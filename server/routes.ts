@@ -6,7 +6,7 @@ import {
   insertUserSchema, 
   insertTransactionSchema, 
   insertBiometricAuthSchema 
-} from "@shared/schema";
+} from "./schema";
 import Stripe from "stripe";
 import { WebSocket } from 'ws';
 import { wss as globalWss } from './index';

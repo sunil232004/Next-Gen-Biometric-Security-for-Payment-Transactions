@@ -3,18 +3,21 @@ import Stripe from 'stripe';
 import { PaymentService } from '../services/payment.service';
 import { getDb } from '../mongodb';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('Missing Stripe secret key');
+const router = Router();
+
+// Initialize Stripe only if key is available
+let stripe: Stripe | null = null;
+let paymentService: PaymentService | null = null;
+
+if (process.env.STRIPE_SECRET_KEY) {
+  stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  paymentService = new PaymentService(getDb());
 }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-03-31.basil'
-});
-
-const router = Router();
-const paymentService = new PaymentService(getDb());
-
 router.post('/create-payment-intent', async (req, res) => {
+  if (!stripe) {
+    return res.status(503).json({ error: 'Payment service unavailable' });
+  }
   try {
     const { amount, userId, purpose } = req.body;
 
@@ -32,15 +35,17 @@ router.post('/create-payment-intent', async (req, res) => {
     });
 
     // Store payment details in MongoDB
-    await paymentService.createPayment({
-      userId,
-      amount,
-      purpose,
-      paymentIntentId: paymentIntent.id,
-      metadata: {
-        stripePaymentIntent: paymentIntent.id
-      }
-    });
+    if (paymentService) {
+      await paymentService.createPayment({
+        userId,
+        amount,
+        purpose,
+        paymentIntentId: paymentIntent.id,
+        metadata: {
+          stripePaymentIntent: paymentIntent.id
+        }
+      });
+    }
 
     res.json({
       clientSecret: paymentIntent.client_secret
@@ -54,6 +59,10 @@ router.post('/create-payment-intent', async (req, res) => {
 });
 
 router.post('/webhook', async (req, res) => {
+  if (!stripe || !paymentService) {
+    return res.status(503).json({ error: 'Payment service unavailable' });
+  }
+
   const sig = req.headers['stripe-signature'];
 
   let event;
@@ -92,6 +101,10 @@ router.post('/webhook', async (req, res) => {
 });
 
 router.get('/user/:userId', async (req, res) => {
+  if (!paymentService) {
+    return res.status(503).json({ error: 'Payment service unavailable' });
+  }
+
   try {
     const userId = parseInt(req.params.userId, 10);
     const payments = await paymentService.getPaymentsByUserId(userId);
