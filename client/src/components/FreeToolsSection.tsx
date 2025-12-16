@@ -30,13 +30,13 @@ export default function FreeToolsSection() {
     },
     {
       id: "ask-ai",
-      icon: <Bot className="text-[#0d4bb5] icon-responsive-lg" />,
+      icon: <Bot className="text-[#0d4bb5] h-6 w-6" />,
       title: "Ask AI",
       onClick: () => handleToolClick("AI Assistant")
     },
     {
       id: "insurance",
-      icon: <Shield className="text-[#0d4bb5] icon-responsive-lg" />,
+      icon: <Shield className="text-[#0d4bb5] h-6 w-6" />,
       title: "Insurance Status",
       onClick: () => handleToolClick("Insurance Status")
     }
@@ -50,7 +50,7 @@ export default function FreeToolsSection() {
         {freeTools.map((tool) => (
           <div 
             key={tool.id} 
-            className="flex flex-col items-center cursor-pointer tap-target group transition-transform active:scale-95"
+            className="flex flex-col items-center cursor-pointer group transition-transform active:scale-95"
             onClick={tool.onClick}
           >
             <div className="bg-white p-1.5 sm:p-2 rounded-lg shadow-sm mb-1.5 sm:mb-2 w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 flex items-center justify-center group-hover:bg-gray-50 transition-colors">

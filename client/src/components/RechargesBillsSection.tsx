@@ -9,19 +9,19 @@ export default function RechargesBillsSection() {
   const rechargeBillOptions = [
     {
       id: "mobile-recharge",
-      icon: <Smartphone className="text-[#0d4bb5] icon-responsive-lg" />,
+      icon: <Smartphone className="text-[#0d4bb5] h-6 w-6" />,
       title: "Mobile Recharge",
       path: "/mobile-recharge"
     },
     {
       id: "electricity-bill",
-      icon: <Lightbulb className="text-[#0d4bb5] icon-responsive-lg" />,
+      icon: <Lightbulb className="text-[#0d4bb5] h-6 w-6" />,
       title: "Electricity Bill",
       path: "/electricity-bill"
     },
     {
       id: "credit-card",
-      icon: <CreditCard className="text-[#0d4bb5] icon-responsive-lg" />,
+      icon: <CreditCard className="text-[#0d4bb5] h-6 w-6" />,
       title: "Credit Card",
       path: "/",
       onClick: () => {
@@ -33,7 +33,7 @@ export default function RechargesBillsSection() {
     },
     {
       id: "my-bills",
-      icon: <Receipt className="text-[#0d4bb5] icon-responsive-lg" />,
+      icon: <Receipt className="text-[#0d4bb5] h-6 w-6" />,
       title: "My Bills",
       path: "/transaction-history"
     }
@@ -52,7 +52,7 @@ export default function RechargesBillsSection() {
       <div className="flex justify-between items-center mb-2.5 sm:mb-3">
         <h2 className="font-semibold text-[#333333] text-sm sm:text-base">RECHARGES &amp; BILL PAYMENTS</h2>
         <button 
-          className="text-[#0d4bb5] text-xs sm:text-sm flex items-center hover:underline active:opacity-70 transition-opacity tap-target-inline"
+          className="text-[#0d4bb5] text-xs sm:text-sm flex items-center hover:underline"
           onClick={() => navigate("/all-services")}
         >
           View all
@@ -77,7 +77,7 @@ export default function RechargesBillsSection() {
         {rechargeBillOptions.map((option) => (
           <div 
             key={option.id} 
-            className="flex flex-col items-center cursor-pointer tap-target group transition-transform active:scale-95"
+            className="flex flex-col items-center cursor-pointer group transition-transform active:scale-95"
             onClick={() => navigateToPath(option)}
           >
             <div className="bg-white p-1.5 sm:p-2 rounded-lg shadow-sm mb-1.5 sm:mb-2 w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 flex items-center justify-center group-hover:bg-gray-50 transition-colors">

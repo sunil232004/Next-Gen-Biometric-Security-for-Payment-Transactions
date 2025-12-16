@@ -93,7 +93,7 @@ export default function PromotionSlider() {
       
       {/* Activate Offer Button */}
       <div className="flex justify-center mt-2.5 sm:mt-3">
-        <button className="bg-yellow-400 text-[#001e84] font-semibold text-xs sm:text-sm py-1.5 px-3 sm:px-4 rounded-full flex items-center hover:bg-yellow-300 active:bg-yellow-500 transition-colors tap-target">
+        <button className="bg-yellow-400 text-[#001e84] font-semibold text-xs sm:text-sm py-1.5 px-3 sm:px-4 rounded-full flex items-center hover:bg-yellow-300 active:bg-yellow-500 transition-colors min-h-[36px]">
           Activate Offer
           <svg 
             xmlns="http://www.w3.org/2000/svg" 

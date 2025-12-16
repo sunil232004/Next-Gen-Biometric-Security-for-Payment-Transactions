@@ -11,10 +11,10 @@ import BottomQRButton from "@/components/BottomQRButton";
 
 export default function Home() {
   return (
-    <div className="app-container mx-auto min-h-screen bg-white shadow-lg flex flex-col">
+    <div className="max-w-md md:max-w-lg mx-auto min-h-screen bg-white shadow-lg relative">
       <Header />
       
-      <main className="flex-1 overflow-y-auto pb-20 scroll-smooth-touch scrollbar-hide">
+      <main className="pb-24">
         <PromotionSlider />
         <UpiSection />
         <QuickActions />

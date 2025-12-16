@@ -16,49 +16,49 @@ export default function DoMoreSection() {
   const doMoreOptions = [
     {
       id: "personal-loan",
-      icon: <Briefcase className="text-[#0d4bb5] icon-responsive-lg" />,
+      icon: <Briefcase className="text-[#0d4bb5] h-6 w-6" />,
       title: "Personal Loan",
       onClick: () => navigate("/personal-loan")
     },
     {
       id: "credit-card",
-      icon: <CreditCard className="text-[#0d4bb5] icon-responsive-lg" />,
+      icon: <CreditCard className="text-[#0d4bb5] h-6 w-6" />,
       title: "Credit Card Carnival",
       onClick: () => navigate("/credit-card")
     },
     {
       id: "paytm-money",
-      icon: <Wallet className="text-[#0d4bb5] icon-responsive-lg" />,
+      icon: <Wallet className="text-[#0d4bb5] h-6 w-6" />,
       title: "Paytm Money",
       onClick: () => handleServiceClick("Paytm Money")
     },
     {
       id: "sbi-mf",
-      icon: <PieChart className="text-[#0d4bb5] icon-responsive-lg" />,
+      icon: <PieChart className="text-[#0d4bb5] h-6 w-6" />,
       title: "SBI MF SIP @ ₹250",
       onClick: () => handleServiceClick("SBI MF SIP")
     },
     {
       id: "travel",
-      icon: <Plane className="text-[#0d4bb5] icon-responsive-lg" />,
+      icon: <Plane className="text-[#0d4bb5] h-6 w-6" />,
       title: "Flight Booking",
       onClick: () => navigate("/flight-booking")
     },
     {
       id: "train",
-      icon: <Train className="text-[#0d4bb5] icon-responsive-lg" />,
+      icon: <Train className="text-[#0d4bb5] h-6 w-6" />,
       title: "Train Booking",
       onClick: () => navigate("/train-booking")
     },
     {
       id: "bus",
-      icon: <Bus className="text-[#0d4bb5] icon-responsive-lg" />,
+      icon: <Bus className="text-[#0d4bb5] h-6 w-6" />,
       title: "Bus Booking",
       onClick: () => navigate("/bus-booking")
     },
     {
       id: "all-services",
-      icon: <Grid className="text-[#0d4bb5] icon-responsive-lg" />,
+      icon: <Grid className="text-[#0d4bb5] h-6 w-6" />,
       title: "All Services",
       onClick: () => navigate("/all-services")
     }
@@ -72,7 +72,7 @@ export default function DoMoreSection() {
         {doMoreOptions.map((option) => (
           <div 
             key={option.id} 
-            className="flex flex-col items-center cursor-pointer tap-target group transition-transform active:scale-95"
+            className="flex flex-col items-center cursor-pointer group transition-transform active:scale-95"
             onClick={option.onClick}
           >
             <div className="bg-white p-1.5 sm:p-2 rounded-lg shadow-sm mb-1.5 sm:mb-2 w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 flex items-center justify-center group-hover:bg-gray-50 transition-colors">

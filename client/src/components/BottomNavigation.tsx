@@ -9,14 +9,14 @@ export default function BottomNavigation() {
   const navItems = [
     { 
       id: "home", 
-      icon: <Home className="icon-responsive-md" />, 
+      icon: <Home className="h-5 w-5 sm:h-6 sm:w-6" />, 
       label: "Home", 
       path: "/",
       active: location === "/" 
     },
     { 
       id: "stores", 
-      icon: <Store className="icon-responsive-md" />, 
+      icon: <Store className="h-5 w-5 sm:h-6 sm:w-6" />, 
       label: "Stores", 
       onClick: () => {
         toast({
@@ -40,14 +40,14 @@ export default function BottomNavigation() {
     },
     { 
       id: "history", 
-      icon: <History className="icon-responsive-md" />, 
+      icon: <History className="h-5 w-5 sm:h-6 sm:w-6" />, 
       label: "History", 
       path: "/transaction-history",
       active: location === "/transaction-history" 
     },
     { 
       id: "banking", 
-      icon: <Building className="icon-responsive-md" />, 
+      icon: <Building className="h-5 w-5 sm:h-6 sm:w-6" />, 
       label: "Banking", 
       onClick: () => {
         toast({
@@ -68,8 +68,8 @@ export default function BottomNavigation() {
   };
 
   return (
-    <nav className="bottom-nav shadow-lg z-40">
-      <div className="app-container mx-auto grid grid-cols-5 py-2 px-2 sm:px-4">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40 safe-area-bottom">
+      <div className="max-w-md md:max-w-lg mx-auto grid grid-cols-5 py-2 px-2 sm:px-4">
         {navItems.map((item, index) => (
           index === 2 ? (
             <div 
@@ -77,14 +77,14 @@ export default function BottomNavigation() {
               className="flex justify-center"
               onClick={() => handleNavClick(item)}
             >
-              <div className="w-12 h-12 sm:w-14 sm:h-14 -mt-6 sm:-mt-7 rounded-full bg-[#0d4bb5] flex items-center justify-center cursor-pointer shadow-lg tap-target hover:bg-[#0a3d96] transition-colors">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 -mt-6 sm:-mt-7 rounded-full bg-[#0d4bb5] flex items-center justify-center cursor-pointer shadow-lg hover:bg-[#0a3d96] transition-colors">
                 {item.icon}
               </div>
             </div>
           ) : (
             <button 
               key={item.id} 
-              className="flex flex-col items-center space-y-0.5 sm:space-y-1 tap-target"
+              className="flex flex-col items-center space-y-0.5 sm:space-y-1 min-h-[44px]"
               onClick={() => handleNavClick(item)}
             >
               <div className={item.active ? "text-[#0d4bb5]" : "text-gray-500"}>
