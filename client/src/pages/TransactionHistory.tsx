@@ -15,7 +15,19 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { Transaction } from "@shared/schema";
+
+// Transaction type definition
+interface Transaction {
+  id: number;
+  userId: number;
+  amount: number;
+  type: string;
+  status: string;
+  description?: string;
+  serviceId?: number;
+  createdAt: string | Date;
+  timestamp?: string | Date;
+}
 
 export default function TransactionHistory() {
   const [_, navigate] = useLocation();
@@ -225,7 +237,7 @@ export default function TransactionHistory() {
                       {transaction.description || "No description"}
                     </p>
                     <span className="text-gray-400 text-xs">
-                      {getFormattedTime(transaction.createdAt || transaction.timestamp)}
+                      {getFormattedTime(String(transaction.createdAt || transaction.timestamp || new Date()))}
                     </span>
                   </div>
                 </div>
