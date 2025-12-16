@@ -4,166 +4,139 @@ import cors from "cors";
 import { registerRoutes } from "./routes";
 import { connectToDatabase, createCollections, closeConnection } from "./mongodb";
 import { MongoDBStorage } from "./mongodbStorage";
-import http from 'http';
-import { WebSocketServer } from 'ws';
+
+const isVercel = !!process.env.VERCEL;
 
 // Simple log function
 function log(message: string, source = 'server') {
-  const formattedTime = new Date().toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true,
-  });
-  console.log(`${formattedTime} [${source}] ${message}`);
+  console.log(`[${source}] ${message}`);
 }
 
 // Initialize MongoDB storage
 export const mongoStorage = new MongoDBStorage();
 
 const app = express();
-const httpServer = http.createServer(app);
 
-// Create WebSocket server on a dedicated path to avoid colliding with Vite's HMR
-export const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+// WebSocket server - only create in non-serverless environment
+export let wss: any = null;
+let httpServer: any = null;
 
-// Handle WebSocket connections
-wss.on('connection', (ws) => {
-  log('Client connected');
-
-  ws.on('close', () => {
-    log('Client disconnected');
+if (!isVercel) {
+  const http = await import('http');
+  const { WebSocketServer } = await import('ws');
+  httpServer = http.createServer(app);
+  wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  wss.on('connection', (ws: any) => {
+    log('Client connected');
+    ws.on('close', () => {
+      log('Client disconnected');
+    });
   });
-});
+}
 
-// CORS configuration - allow frontend to connect from different origins
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:5173', // Vite default port
-  process.env.FRONTEND_URL, // Production frontend URL
-].filter(Boolean);
-
+// CORS configuration
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or Postman)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Increase JSON payload limit to 10MB to handle biometric data (like face images)
+// Increase JSON payload limit to 10MB to handle biometric data
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/', (req, res) => {
+  res.json({ message: 'Biometric Payment API' });
+});
+
+// Request logging
 app.use((req, res, next) => {
   const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
   res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+    if (req.path.startsWith("/api")) {
+      log(`${req.method} ${req.path} ${res.statusCode} in ${Date.now() - start}ms`);
     }
   });
-
   next();
 });
 
-// Graceful shutdown function
+// Graceful shutdown function (for local dev)
 function gracefulShutdown() {
-  log('Shutting down gracefully...', 'mongodb');
-  closeConnection()
-    .then(() => {
-      process.exit(0);
-    })
-    .catch((err) => {
-      log(`Error during shutdown: ${err}`, 'mongodb');
-      process.exit(1);
-    });
+  log('Shutting down...', 'mongodb');
+  closeConnection().then(() => process.exit(0)).catch(() => process.exit(1));
 }
 
-// Handle app termination
-process.on('SIGINT', gracefulShutdown);
-process.on('SIGTERM', gracefulShutdown);
+if (!isVercel) {
+  process.on('SIGINT', gracefulShutdown);
+  process.on('SIGTERM', gracefulShutdown);
+}
 
 // Initialize the app
 let isInitialized = false;
+let initPromise: Promise<void> | null = null;
+
 async function initializeApp() {
   if (isInitialized) return;
+  if (initPromise) return initPromise;
   
+  initPromise = (async () => {
+    try {
+      log('Connecting to MongoDB...', 'server');
+      await connectToDatabase();
+      
+      log('Creating collections...', 'server');
+      await createCollections();
+      
+      log('Initializing demo data...', 'server');
+      await mongoStorage.initializeDemoData();
+      
+      log('Registering routes...', 'server');
+      await registerRoutes(app);
+
+      app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+        console.error('Error:', err);
+        res.status(err.status || 500).json({ message: err.message || "Internal Server Error" });
+      });
+
+      isInitialized = true;
+      log('App initialized', 'server');
+    } catch (error) {
+      log(`Init failed: ${error}`, 'server');
+      initPromise = null;
+      throw error;
+    }
+  })();
+  
+  return initPromise;
+}
+
+// For Vercel serverless
+export default async function handler(req: Request, res: Response) {
   try {
-    // Connect to MongoDB first
-    const db = await connectToDatabase();
-    
-    // Create collections if they don't exist
-    await createCollections();
-    
-    // Initialize demo data
-    await mongoStorage.initializeDemoData();
-    
-    // Register routes after DB connection is established
-    await registerRoutes(app);
-
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-
-      res.status(status).json({ message });
-      throw err;
-    });
-
-    isInitialized = true;
-  } catch (error) {
-    log(`Failed to initialize the app: ${error}`, 'express');
-    throw error;
+    await initializeApp();
+    return app(req, res);
+  } catch (error: any) {
+    console.error('Handler error:', error);
+    res.status(500).json({ error: 'Server error', message: error.message });
   }
 }
 
-// Check if running on Vercel or locally
-const isVercel = !!process.env.VERCEL;
-
-if (!isVercel) {
-  // Local development - listen on a port
+// For local development
+if (!isVercel && httpServer) {
   initializeApp().then(() => {
     const port = process.env.PORT || 5000;
     httpServer.listen(port, () => {
       log(`Server running at http://localhost:${port}`);
     });
   }).catch(err => {
-    log(`Failed to start server: ${err}`, 'express');
+    log(`Failed to start: ${err}`, 'server');
     process.exit(1);
   });
-}
-
-// Export the Express app for both Vercel and local use
-export default app;
-
-// Export handler for Vercel
-export async function handler(req: any, res: any) {
-  await initializeApp();
-  return app(req, res);
 }
