@@ -415,11 +415,14 @@ export default function PaymentVerificationGate({
               <div className="w-16 h-16 mx-auto mb-4 bg-yellow-100 rounded-full flex items-center justify-center">
                 <AlertCircle className="w-8 h-8 text-yellow-600" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">No Biometric Methods Set Up</h3>
+              <h3 className="font-semibold text-lg mb-2">No Security Credentials Set Up</h3>
               <p className="text-gray-500 mb-4">
-                Please set up at least one biometric method in Profile Settings to make payments.
+                Please set up at least one security credential (fingerprint, face, or voice) to make payments.
               </p>
-              <Button onClick={onClose}>Go to Settings</Button>
+              <Button onClick={() => {
+                onClose();
+                window.location.href = '/security-credentials';
+              }}>Set Up Security Credentials</Button>
             </div>
           ) : !selectedMethod ? (
             <>

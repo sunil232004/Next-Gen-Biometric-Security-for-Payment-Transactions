@@ -115,11 +115,11 @@ export default function ProfileSettings() {
       hasArrow: false,
     },
     {
-      id: "biometric",
+      id: "security-credentials",
       icon: <Fingerprint className="w-6 h-6 text-blue-500" />,
-      title: "Biometric Security",
+      title: "Security Credentials",
       description: `Manage fingerprint, face & voice authentication (${biometrics?.length || 0} registered)`,
-      action: () => setIsBiometricModalOpen(true),
+      action: () => navigate('/security-credentials'),
       hasArrow: true,
     },
     {
