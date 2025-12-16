@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await apiRequest('/api/v2/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password })
+        body: { email, password }
       });
 
       if (response.success) {
@@ -124,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await apiRequest('/api/v2/auth/signup', {
         method: 'POST',
-        body: JSON.stringify(data)
+        body: data
       });
 
       if (response.success) {
@@ -169,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: {
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(data)
+        body: data
       });
 
       if (response.success) {
@@ -191,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: {
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ pin })
+        body: { pin }
       });
 
       return { success: response.success, message: response.message };
@@ -208,7 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: {
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ pin })
+        body: { pin }
       });
 
       return response.success;
