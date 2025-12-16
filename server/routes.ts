@@ -153,27 +153,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create transaction
   app.post("/api/transaction", async (req, res) => {
     try {
-      const { userId, type, amount, description, metadata } = req.body;
+      const { userId, type, amount, description, metadata, status } = req.body;
+      console.log('[Transaction] Creating transaction:', { userId, type, amount });
 
-      if (!userId || !type || !amount) {
+      if (!userId || !type || amount === undefined) {
         return res.status(400).json({
           success: false,
-          message: "Missing required fields"
+          message: "Missing required fields: userId, type, and amount are required"
         });
       }
 
-      const transaction = {
-        id: Date.now().toString(),
-        userId,
+      // Save to MongoDB using storage
+      const transaction = await storage.createTransaction({
+        userId: Number(userId),
         type,
-        amount,
-        status: "success",
-        description,
+        amount: Number(amount),
+        status: status || "success",
+        description: description || `${type} transaction`,
         timestamp: new Date().toISOString(),
-        metadata
-      };
+        createdAt: new Date().toISOString(),
+        metadata: metadata || '{}'
+      });
 
-      // In a real app, save to database
+      console.log('[Transaction] Created:', transaction);
       res.json({ success: true, transaction });
     } catch (error) {
       console.error("Error creating transaction:", error);

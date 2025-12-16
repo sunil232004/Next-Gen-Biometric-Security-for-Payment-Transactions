@@ -145,7 +145,8 @@ export default function QRScanner() {
         body: transactionData
       });
       
-      if (response.ok) {
+      // apiRequest returns parsed JSON or empty array on error
+      if (response && response.success) {
         toast({
           title: "Payment Successful!",
           description: `You've paid ₹${amount} to ${paymentData?.name || paymentData?.upiId}`,
@@ -156,7 +157,7 @@ export default function QRScanner() {
           navigate("/");
         }, 2000);
       } else {
-        throw new Error("Failed to complete transaction");
+        throw new Error(response?.message || "Failed to complete transaction");
       }
     } catch (error: any) {
       toast({

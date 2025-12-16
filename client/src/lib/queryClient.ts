@@ -21,6 +21,8 @@ export async function apiRequest(
   try {
     const method = options?.method || 'GET';
     const fullUrl = getApiUrl(url);
+    console.log(`[apiRequest] ${method} ${fullUrl}`);
+    
     const res = await fetch(fullUrl, {
       method,
       headers: options?.body ? { "Content-Type": "application/json", ...(options.headers || {}) } : options?.headers || {},
@@ -33,13 +35,15 @@ export async function apiRequest(
     // Return the JSON if the response has content, otherwise return the response
     const contentType = res.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
-      return res.json();
+      const data = await res.json();
+      console.log(`[apiRequest] Response:`, data);
+      return data;
     }
     return res;
   } catch (error) {
     console.error(`API request failed: ${url}`, error);
-    // Return empty data instead of throwing
-    return [];
+    // Return error object instead of empty array to help with debugging
+    return { success: false, error: error instanceof Error ? error.message : 'Request failed' };
   }
 }
 
