@@ -128,7 +128,7 @@ export default function SecurityCredentials() {
 
   // Password verification
   const handlePasswordVerify = async () => {
-    if (!password) {
+    if (!password.trim()) {
       setPasswordError('Please enter your password');
       return;
     }
@@ -137,9 +137,13 @@ export default function SecurityCredentials() {
     setPasswordError('');
     
     try {
-      const response = await apiRequest('/api/auth/verify-password', {
+      const token = localStorage.getItem('paytm_auth_token');
+      const response = await apiRequest('/api/v2/auth/verify-password', {
         method: 'POST',
-        body: { userId: user?._id, password }
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: { password }
       });
       
       if (response.success) {
@@ -149,15 +153,10 @@ export default function SecurityCredentials() {
           description: "You can now manage your security credentials",
         });
       } else {
-        setPasswordError('Incorrect password');
+        setPasswordError(response.message || 'Incorrect password');
       }
-    } catch (error) {
-      // For demo, allow access anyway
-      setIsPasswordVerified(true);
-      toast({
-        title: "Access Granted",
-        description: "You can now manage your security credentials",
-      });
+    } catch (error: any) {
+      setPasswordError(error.message || 'Failed to verify password');
     } finally {
       setIsVerifying(false);
     }
