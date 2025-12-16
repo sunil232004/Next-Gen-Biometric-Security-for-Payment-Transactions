@@ -47,13 +47,13 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
-// Health check
+// Health check (before initialization)
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', initialized: isInitialized, timestamp: new Date().toISOString() });
 });
 
 app.get('/', (req, res) => {
-  res.json({ message: 'Biometric Payment API' });
+  res.json({ message: 'Biometric Payment API', initialized: isInitialized });
 });
 
 // Request logging
@@ -100,8 +100,15 @@ async function initializeApp() {
       log('Registering routes...', 'server');
       await registerRoutes(app);
 
+      // Catch-all 404 handler
+      app.use((req, res) => {
+        console.log(`[404] ${req.method} ${req.url}`);
+        res.status(404).json({ message: 'Not Found', path: req.url });
+      });
+
+      // Error handler
       app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-        console.error('Error:', err);
+        console.error('[Error Handler]', err);
         res.status(err.status || 500).json({ message: err.message || "Internal Server Error" });
       });
 
@@ -120,11 +127,18 @@ async function initializeApp() {
 // For Vercel serverless
 export default async function handler(req: Request, res: Response) {
   try {
+    console.log(`[handler] ${req.method} ${req.url}`);
     await initializeApp();
+    console.log('[handler] App initialized, calling Express handler');
     return app(req, res);
   } catch (error: any) {
-    console.error('Handler error:', error);
-    res.status(500).json({ error: 'Server error', message: error.message });
+    console.error('[handler] Initialization error:', error);
+    console.error('[handler] Stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Server initialization failed',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
 }
 
