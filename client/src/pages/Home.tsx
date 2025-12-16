@@ -11,7 +11,7 @@ import BottomQRButton from "@/components/BottomQRButton";
 
 export default function Home() {
   return (
-    <div className="app-container mx-auto min-h-screen overflow-y-auto bg-white shadow-lg flex flex-col">
+    <div className="app-container mx-auto min-h-screen bg-white shadow-lg flex flex-col">
       <Header />
       
       <main className="flex-1 overflow-y-auto pb-20 scroll-smooth-touch scrollbar-hide">

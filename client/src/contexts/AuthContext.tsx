@@ -33,7 +33,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   signup: (data: SignupData) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
+  refreshUser: (authToken?: string) => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<{ success: boolean; message?: string }>;
   setUpiPin: (pin: string) => Promise<{ success: boolean; message?: string }>;
   verifyUpiPin: (pin: string) => Promise<boolean>;
@@ -63,19 +63,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check auth on mount
   useEffect(() => {
-    if (token) {
-      refreshUser().finally(() => setIsLoading(false));
+    const storedToken = localStorage.getItem(TOKEN_KEY);
+    if (storedToken) {
+      refreshUser(storedToken).finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);
     }
   }, []);
 
   // Refresh user data
-  const refreshUser = async () => {
+  const refreshUser = async (authToken?: string) => {
+    const tokenToUse = authToken || token || localStorage.getItem(TOKEN_KEY);
+    if (!tokenToUse) {
+      setIsLoading(false);
+      return;
+    }
+    
     try {
       const response = await apiRequest('/api/v2/auth/me', {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${tokenToUse}`
         }
       });
 
@@ -107,10 +114,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (response.success) {
+        const newToken = response.token;
         setUser(response.user);
-        setToken(response.token);
-        localStorage.setItem(TOKEN_KEY, response.token);
-        await refreshUser();
+        setToken(newToken);
+        localStorage.setItem(TOKEN_KEY, newToken);
+        // Pass the token directly to avoid state timing issues
+        await refreshUser(newToken);
         return { success: true };
       } else {
         return { success: false, message: response.message || 'Login failed' };
@@ -129,9 +138,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (response.success) {
+        const newToken = response.token;
         setUser(response.user);
-        setToken(response.token);
-        localStorage.setItem(TOKEN_KEY, response.token);
+        setToken(newToken);
+        localStorage.setItem(TOKEN_KEY, newToken);
+        // Pass the token directly to avoid state timing issues
+        await refreshUser(newToken);
         return { success: true };
       } else {
         return { success: false, message: response.message || 'Signup failed' };
