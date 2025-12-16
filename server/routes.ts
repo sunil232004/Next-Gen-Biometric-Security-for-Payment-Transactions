@@ -1,18 +1,26 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { mongoStorage as storage } from "./index.js";
 import { z } from "zod";
+import { WebSocket } from 'ws';
+import { wss as globalWss, mongoStorage as legacyStorage } from './index.js';
+
+// Import new route modules
+import authRoutes from './routes/auth.routes.js';
+import biometricRoutes from './routes/biometric.routes.js';
+import transactionRoutes from './routes/transaction.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
+
+// Import for mock Stripe
+import { createStripeInstance, MockStripe } from "./services/stripe.js";
+
+// Import legacy schemas for backward compatibility
 import { 
   insertUserSchema, 
   insertTransactionSchema, 
   insertBiometricAuthSchema 
 } from "./schema.js";
-import { createStripeInstance, simulateSuccessfulPayment, getPaymentStatus, MockStripe } from "./services/stripe.js";
-import { WebSocket } from 'ws';
-import { wss as globalWss } from './index.js';
 
-// Initialize mock Stripe with the secret key if provided.
-// This uses our mock implementation, not real Stripe.
+// Initialize mock Stripe
 let stripe: MockStripe | null = null;
 if (process.env.STRIPE_SECRET_KEY) {
   try {
@@ -20,30 +28,50 @@ if (process.env.STRIPE_SECRET_KEY) {
     console.log('[Stripe] Mock payment gateway initialized');
   } catch (err) {
     console.warn('Failed to initialize mock Stripe:', err);
-    stripe = null;
+    stripe = createStripeInstance('sk_test_mock_default_key');
   }
 } else {
-  console.warn('STRIPE_SECRET_KEY not set — Payment endpoints will use default mock key');
+  console.warn('STRIPE_SECRET_KEY not set — Using default mock key');
   stripe = createStripeInstance('sk_test_mock_default_key');
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
-  // Attach handlers to the shared WebSocket server (created in index.ts)
+  // Attach WebSocket handlers
   if (globalWss) {
     globalWss.on('connection', (ws: WebSocket) => {
-      console.log('Client connected');
+      console.log('WebSocket client connected');
 
       ws.on('message', (message: string) => {
-        console.log('Received:', message);
+        console.log('WebSocket message received:', message);
       });
 
       ws.on('close', () => {
-        console.log('Client disconnected');
+        console.log('WebSocket client disconnected');
       });
     });
   }
+
+  // ============================================
+  // NEW AUTHENTICATED API ROUTES (v2)
+  // ============================================
+  
+  // Auth routes: /api/v2/auth/*
+  app.use('/api/v2/auth', authRoutes);
+  
+  // Biometric routes: /api/v2/biometric/*
+  app.use('/api/v2/biometric', biometricRoutes);
+  
+  // Transaction routes: /api/v2/transactions/*
+  app.use('/api/v2/transactions', transactionRoutes);
+  
+  // Payment routes: /api/v2/payments/*
+  app.use('/api/v2/payments', paymentRoutes);
+
+  // ============================================
+  // LEGACY API ROUTES (v1 - backward compatibility)
+  // ============================================
 
   // Get services by category
   app.get("/api/services", async (req, res) => {
@@ -51,10 +79,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const category = req.query.category as string | undefined;
       
       if (category) {
-        const services = await storage.getServicesByCategory(category);
+        const services = await legacyStorage.getServicesByCategory(category);
         return res.json(services);
       } else {
-        const services = await storage.getServices();
+        const services = await legacyStorage.getServices();
         return res.json(services);
       }
     } catch (error) {
@@ -63,7 +91,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get user data
+  // Legacy: Get user data (numeric ID)
   app.get("/api/user/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -71,7 +99,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid user ID" });
       }
 
-      const user = await storage.getUser(id);
+      const user = await legacyStorage.getUser(id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -83,7 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Update user profile image
+  // Legacy: Update user profile image
   app.post("/api/user/:id/profile-image", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -96,12 +124,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Profile image is required" });
       }
       
-      const user = await storage.getUser(id);
+      const user = await legacyStorage.getUser(id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
       
-      const updatedUser = await storage.updateUserProfileImage(id, profileImage);
+      const updatedUser = await legacyStorage.updateUserProfileImage(id, profileImage);
       return res.json(updatedUser);
     } catch (error) {
       console.error("Error updating profile image:", error);
@@ -109,17 +137,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create a new user
+  // Legacy: Create a new user
   app.post("/api/user", async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
-      const existingUser = await storage.getUserByUsername(userData.username);
+      const existingUser = await legacyStorage.getUserByUsername(userData.username);
       
       if (existingUser) {
         return res.status(409).json({ message: "Username already exists" });
       }
 
-      const user = await storage.createUser(userData);
+      const user = await legacyStorage.createUser(userData);
       return res.status(201).json(user);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -134,7 +162,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get user transactions
+  // Legacy: Get user transactions
   app.get("/api/transactions/:userId", async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
@@ -142,7 +170,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid user ID" });
       }
 
-      const transactions = await storage.getUserTransactions(userId);
+      const transactions = await legacyStorage.getUserTransactions(userId);
       return res.json(transactions);
     } catch (error) {
       console.error("Error fetching transactions:", error);
@@ -150,7 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create transaction
+  // Legacy: Create transaction
   app.post("/api/transaction", async (req, res) => {
     try {
       const { userId, type, amount, description, metadata, status } = req.body;
@@ -163,8 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Save to MongoDB using storage
-      const transaction = await storage.createTransaction({
+      const transaction = await legacyStorage.createTransaction({
         userId: Number(userId),
         type,
         amount: Number(amount),
@@ -186,7 +213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all biometric methods for a user
+  // Legacy: Get biometric methods for a user
   app.get("/api/biometric/:userId", async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
@@ -195,7 +222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const type = req.query.type as string | undefined;
-      const biometrics = await storage.getUserBiometricAuth(userId, type);
+      const biometrics = await legacyStorage.getUserBiometricAuth(userId, type);
       return res.json(biometrics);
     } catch (error) {
       console.error("Error fetching biometric methods:", error);
@@ -203,32 +230,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Register a new biometric method
+  // Legacy: Register biometric method
   app.post("/api/biometric/register", async (req, res) => {
     try {
       const schema = insertBiometricAuthSchema.extend({
-        data: z.string().min(10), // Ensure data is substantial
+        data: z.string().min(10),
       });
       
-      // Parse the base data, excluding createdAt validation
       const parsedData = schema.parse(req.body);
-      
-      // Explicitly set createdAt as a guaranteed string
       const createdAt: string = req.body.createdAt || new Date().toISOString();
       
-      // Construct the complete data object with required createdAt
       const biometricData = {
         ...parsedData,
         createdAt
       };
       
-      // Check if user exists
-      const user = await storage.getUser(biometricData.userId);
+      const user = await legacyStorage.getUser(biometricData.userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
       
-      const biometric = await storage.createBiometricAuth(biometricData);
+      const biometric = await legacyStorage.createBiometricAuth(biometricData);
       return res.status(201).json(biometric);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -243,7 +265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Verify a biometric method
+  // Legacy: Verify biometric
   app.post("/api/biometric/verify", async (req, res) => {
     try {
       const { userId, type, data } = req.body;
@@ -259,18 +281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Invalid userId' });
       }
 
-      const isVerified = await storage.verifyBiometricAuth(parsedUserId, type, data);
-
-      if (!isVerified) {
-        // Log stored biometrics for debugging in development
-        try {
-          const stored = await storage.getUserBiometricAuth(parsedUserId, type);
-          console.warn(`Biometric verify failed. incoming data=${data}. stored count=${stored.length}`);
-        } catch (e) {
-          console.warn('Could not fetch stored biometrics for debug:', e);
-        }
-      }
-
+      const isVerified = await legacyStorage.verifyBiometricAuth(parsedUserId, type, data);
       return res.json({ verified: isVerified });
     } catch (error) {
       console.error("Error verifying biometric method:", error);
@@ -278,364 +289,251 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Debug route - list biometric entries for a user (development only)
-  app.get('/api/biometric/debug/:userId', async (req, res) => {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(404).json({ message: 'Not available' });
-    }
-
-    try {
-      const userId = parseInt(req.params.userId, 10);
-      if (isNaN(userId)) return res.status(400).json({ message: 'Invalid userId' });
-      const items = await storage.getUserBiometricAuth(userId);
-      return res.json(items);
-    } catch (err) {
-      console.error('Error in biometric debug route:', err);
-      return res.status(500).json({ message: 'Error' });
-    }
-  });
-
-  // Delete a biometric method
+  // Legacy: Delete biometric method
   app.delete("/api/biometric/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid biometric ID" });
       }
-      
-      const success = await storage.deleteBiometricAuth(id);
-      
-      if (!success) {
+
+      const result = await legacyStorage.deleteBiometricAuth(id);
+      if (!result) {
         return res.status(404).json({ message: "Biometric method not found" });
       }
-      
-      return res.json({ message: "Biometric method deleted successfully" });
+
+      return res.json({ success: true, message: "Biometric method deleted" });
     } catch (error) {
       console.error("Error deleting biometric method:", error);
       res.status(500).json({ message: "Failed to delete biometric method" });
     }
   });
-  
-  // Process card payment (add money to wallet or pay bills)
-  app.post("/api/card-payment", async (req, res) => {
-    try {
-      const { userId, amount, cardDetails, paymentType } = req.body;
-      
-      if (!userId || !amount || !cardDetails) {
-        return res.status(400).json({ 
-          message: "Missing required fields: userId, amount, cardDetails" 
-        });
-      }
-      
-      // Validate user
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      // In a real application, we would validate the card details and process
-      // the payment through a payment gateway like Stripe
-      
-      // For this demonstration, we'll just simulate a successful payment
-      
-      let type = "recharge";
-      let description = "Added money via card";
-      let updateBalance = true;
-      
-      // Handle different payment types
-      if (paymentType === 'credit_card_bill') {
-        type = "payment";
-        description = "Paid credit card bill";
-        updateBalance = false; // Don't update wallet balance for bill payments
-      }
-      
-      // Create transaction record
-      const transaction = await storage.createTransaction({
-        userId,
-        type,
-        amount,
-        status: "success",
-        description,
-        timestamp: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        metadata: JSON.stringify({
-          paymentMethod: "card",
-          cardLast4: cardDetails.cardNumber.slice(-4),
-          paymentType
-        })
-      });
-      
-      // Update user balance only for recharges, not for bill payments
-      if (transaction.status === "success" && updateBalance) {
-        await storage.updateUserBalance(userId, amount);
-      }
-      
-      return res.status(201).json({ 
-        success: true, 
-        transaction 
-      });
-    } catch (error) {
-      console.error("Error processing card payment:", error);
-      res.status(500).json({ 
-        message: "Failed to process card payment" 
-      });
-    }
-  });
 
-  // Stripe: Create a payment intent
+  // ============================================
+  // PAYMENT ENDPOINTS (legacy)
+  // ============================================
+
+  // Legacy: Create payment intent (mock Stripe)
   app.post("/api/create-payment-intent", async (req, res) => {
     try {
-      if (!stripe) {
-        return res.status(503).json({ error: 'Stripe not configured' });
+      const { amount, currency = 'inr' } = req.body;
+      
+      if (!amount || isNaN(Number(amount))) {
+        return res.status(400).json({
+          success: false,
+          message: "Valid amount is required"
+        });
       }
-      const { amount } = req.body;
 
-      // Create a PaymentIntent with the order amount and currency
+      if (!stripe) {
+        return res.status(500).json({
+          success: false,
+          message: "Payment gateway not initialized"
+        });
+      }
+
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(amount * 100), // Convert to cents
-        currency: "inr",
-        automatic_payment_methods: {
-          enabled: true,
-        },
+        amount: Math.round(Number(amount) * 100),
+        currency,
       });
 
-      res.json({
+      return res.json({
+        success: true,
         clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id
       });
     } catch (error) {
       console.error("Error creating payment intent:", error);
-      res.status(500).json({ error: "Failed to create payment intent" });
-    }
-  });
-  
-  // Stripe: Webhook for payment events
-  app.post("/api/stripe-webhook", async (req, res) => {
-    const payload = req.body;
-    
-    try {
-      const event = payload;
-      
-      // Handle the event
-      switch (event.type) {
-        case 'payment_intent.succeeded':
-          const paymentIntent = event.data.object;
-          
-          // Extract metadata
-          const metadata = paymentIntent.metadata;
-          const userId = parseInt(metadata.userId);
-          const purpose = metadata.purpose;
-          const amount = paymentIntent.amount / 100; // Convert from cents to rupees
-          
-          // If it's a valid user (not a guest checkout), update their balance
-          if (!isNaN(userId) && userId > 0) {
-            // Create a transaction record
-            await storage.createTransaction({
-              userId,
-              type: purpose === 'wallet_recharge' ? 'recharge' : 'payment',
-              amount,
-              status: "success",
-              description: purpose === 'wallet_recharge' ? 
-                "Added money via Stripe" : "Payment via Stripe",
-              timestamp: new Date().toISOString(),
-              createdAt: new Date().toISOString(),
-              metadata: JSON.stringify({
-                paymentMethod: "stripe",
-                paymentIntentId: paymentIntent.id,
-                purpose
-              })
-            });
-            
-            // Only update balance for wallet recharges
-            if (purpose === 'wallet_recharge') {
-              await storage.updateUserBalance(userId, amount);
-            }
-          }
-          
-          console.log('PaymentIntent was successful!', paymentIntent.id);
-          break;
-          
-        case 'payment_intent.payment_failed':
-          const failedPaymentIntent = event.data.object;
-          console.log('Payment failed:', failedPaymentIntent.id);
-          break;
-          
-        default:
-          console.log(`Unhandled event type ${event.type}`);
-      }
-      
-      // Return a 200 response to acknowledge receipt of the event
-      res.status(200).json({ received: true });
-    } catch (error: any) {
-      console.error('Error processing Stripe webhook:', error);
-      res.status(400).send(`Webhook Error: ${error.message || 'Unknown error'}`);
+      return res.status(500).json({
+        success: false,
+        message: "Error creating payment"
+      });
     }
   });
 
-  // Verify payment endpoint
-  app.post("/api/verify-payment", async (req, res) => {
+  // Legacy: Process payment
+  app.post("/api/process-payment", async (req, res) => {
     try {
+      const { paymentIntentId, userId, amount, description } = req.body;
+      
+      console.log('[Payment] Processing:', { paymentIntentId, userId, amount });
+
+      if (!paymentIntentId) {
+        return res.status(400).json({
+          success: false,
+          message: "Payment intent ID is required"
+        });
+      }
+
       if (!stripe) {
-        return res.status(503).json({ success: false, message: 'Stripe not configured' });
-      }
-      const { paymentIntentId } = req.body;
-
-      // Use mock to simulate payment success
-      const paymentIntent = await simulateSuccessfulPayment(paymentIntentId);
-
-      if (paymentIntent && paymentIntent.status === "succeeded") {
-        // Create a transaction record
-        const transaction = await storage.createTransaction({
-          userId: req.body.userId,
-          type: "payment",
-          amount: paymentIntent.amount / 100, // Convert from cents
-          status: "success",
-          description: "Card payment",
-          timestamp: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          metadata: JSON.stringify({
-            paymentIntentId,
-            paymentMethod: "card"
-          })
+        return res.status(500).json({
+          success: false,
+          message: "Payment gateway not initialized"
         });
+      }
 
-        // Update user balance
-        await storage.updateUserBalance(req.body.userId, paymentIntent.amount / 100);
+      // Confirm the payment
+      const paymentIntent = await stripe.paymentIntents.confirm(paymentIntentId);
+      
+      if (paymentIntent.status === 'succeeded') {
+        // Create transaction record
+        if (userId && amount) {
+          await legacyStorage.createTransaction({
+            userId: Number(userId),
+            type: 'payment',
+            amount: Number(amount),
+            status: 'success',
+            description: description || 'Card payment',
+            timestamp: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            metadata: JSON.stringify({ paymentIntentId })
+          });
+        }
 
-        res.json({ success: true, transaction });
+        return res.json({
+          success: true,
+          paymentIntent
+        });
       } else {
-        res.status(400).json({ 
-          success: false, 
-          message: "Payment verification failed" 
+        return res.status(400).json({
+          success: false,
+          message: 'Payment failed',
+          status: paymentIntent.status
         });
       }
     } catch (error) {
-      console.error("Error verifying payment:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Error verifying payment" 
+      console.error("Error processing payment:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Error processing payment"
       });
     }
   });
 
-  // Verify biometric authentication
-  app.post("/api/verify-biometric", async (req, res) => {
+  // Legacy: Get payment status
+  app.get("/api/payment-status/:paymentIntentId", async (req, res) => {
     try {
-      const { userId, authType, authData } = req.body;
-
-      if (!userId || !authType || !authData) {
-        return res.status(400).json({ success: false, message: 'Missing required fields: userId, authType, authData' });
+      const { paymentIntentId } = req.params;
+      
+      if (!stripe) {
+        return res.status(500).json({
+          success: false,
+          message: "Payment gateway not initialized"
+        });
       }
 
-      const parsedUserId = parseInt(userId as any, 10);
-      if (isNaN(parsedUserId)) {
-        return res.status(400).json({ success: false, message: 'Invalid userId' });
-      }
-
-      // Use the storage helper that compares stored biometrics for the user
-      const isVerified = await storage.verifyBiometricAuth(parsedUserId, authType, authData);
-
-      if (isVerified) {
-        return res.json({ success: true });
-      }
-
-      return res.status(401).json({ success: false, message: 'Biometric verification failed' });
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      return res.json({
+        success: true,
+        status: paymentIntent?.status,
+        paymentIntent
+      });
     } catch (error) {
-      console.error("Error verifying biometric:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Error verifying biometric" 
+      console.error("Error fetching payment status:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Error fetching payment status"
       });
     }
   });
 
-  // Set UPI PIN
+  // Legacy: UPI PIN operations
   app.post("/api/set-upi-pin", async (req, res) => {
     try {
-      const { userId, upiPin } = req.body;
+      const { userId, pin } = req.body;
 
-      if (!userId || !upiPin) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "User ID and UPI PIN are required" 
+      if (!userId || !pin) {
+        return res.status(400).json({
+          success: false,
+          message: "User ID and PIN are required"
         });
       }
 
-      // Validate UPI PIN format (4 digits)
-      if (!/^\d{4}$/.test(upiPin)) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "UPI PIN must be 4 digits" 
+      if (!/^\d{4}$/.test(pin)) {
+        return res.status(400).json({
+          success: false,
+          message: "PIN must be exactly 4 digits"
         });
       }
 
-      // For demo purposes, we'll consider any 4-digit PIN as valid
-      res.json({ 
-        success: true, 
-        message: "UPI PIN set successfully" 
-      });
+      const parsedUserId = parseInt(userId, 10);
+      if (isNaN(parsedUserId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid user ID"
+        });
+      }
+
+      await legacyStorage.setUPIPin(parsedUserId, pin);
+      res.json({ success: true, message: "UPI PIN set successfully" });
     } catch (error) {
       console.error("Error setting UPI PIN:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Error setting UPI PIN" 
+      res.status(500).json({
+        success: false,
+        message: "Error setting UPI PIN"
       });
     }
   });
 
-  // Verify UPI PIN
   app.post("/api/verify-upi-pin", async (req, res) => {
     try {
-      const { userId, upiPin } = req.body;
+      const { userId, pin } = req.body;
 
-      if (!userId || !upiPin) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "User ID and UPI PIN are required" 
+      if (!userId || !pin) {
+        return res.status(400).json({
+          success: false,
+          message: "User ID and PIN are required"
         });
       }
 
-      // For demo purposes, accept any 4-digit PIN
-      const isValid = /^\d{4}$/.test(upiPin);
+      const parsedUserId = parseInt(userId, 10);
+      if (isNaN(parsedUserId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid user ID"
+        });
+      }
+
+      const isValid = await legacyStorage.verifyUPIPin(parsedUserId, pin);
 
       if (isValid) {
         res.json({ success: true });
       } else {
-        res.status(401).json({ 
-          success: false, 
-          message: "Invalid UPI PIN" 
+        res.status(401).json({
+          success: false,
+          message: "Invalid UPI PIN"
         });
       }
     } catch (error) {
       console.error("Error verifying UPI PIN:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Error verifying UPI PIN" 
+      res.status(500).json({
+        success: false,
+        message: "Error verifying UPI PIN"
       });
     }
   });
 
-  // Process UPI PIN payment
+  // Legacy: Process UPI PIN payment
   app.post("/api/process-upi-payment", async (req, res) => {
     try {
       const { userId, amount, upiPin } = req.body;
 
       if (!userId || !amount || !upiPin) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Missing required fields" 
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields"
         });
       }
 
-      // For demo purposes, verify PIN format only
       const isValid = /^\d{4}$/.test(upiPin);
       if (!isValid) {
-        return res.status(401).json({ 
-          success: false, 
-          message: "Invalid UPI PIN" 
+        return res.status(401).json({
+          success: false,
+          message: "Invalid UPI PIN"
         });
       }
 
-      // Create transaction record
       const transaction = {
         id: Date.now().toString(),
         userId,
@@ -649,17 +547,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       };
 
-      res.json({ 
-        success: true, 
-        transaction 
+      res.json({
+        success: true,
+        transaction
       });
     } catch (error) {
       console.error("Error processing UPI payment:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Error processing payment" 
+      res.status(500).json({
+        success: false,
+        message: "Error processing payment"
       });
     }
+  });
+
+  // ============================================
+  // UTILITY ENDPOINTS
+  // ============================================
+
+  // API version info
+  app.get("/api/version", (req, res) => {
+    res.json({
+      version: "2.0.0",
+      legacySupport: true,
+      endpoints: {
+        v1: "/api/*",
+        v2: "/api/v2/*"
+      }
+    });
   });
 
   return httpServer;

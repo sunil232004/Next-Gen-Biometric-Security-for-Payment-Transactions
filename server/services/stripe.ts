@@ -84,6 +84,8 @@ export class MockStripe {
       metadata?: Record<string, string>;
       description?: string;
       receipt_email?: string;
+      payment_method?: string;
+      confirm?: boolean;
     }): Promise<MockPaymentIntent> => {
       // Simulate network delay for realism
       await new Promise(resolve => setTimeout(resolve, 200));
@@ -91,13 +93,23 @@ export class MockStripe {
       const id = generateId('pi');
       const clientSecret = `${id}_secret_${generateId('cs')}`;
 
+      let status: MockPaymentIntent['status'] = 'requires_payment_method';
+      let amount_received = 0;
+
+      // If confirm is true and payment_method is provided, auto-confirm
+      if (params.confirm && params.payment_method) {
+        const success = Math.random() > 0.05; // 95% success rate
+        status = success ? 'succeeded' : 'requires_payment_method';
+        amount_received = success ? params.amount : 0;
+      }
+
       const paymentIntent: MockPaymentIntent = {
         id,
         object: 'payment_intent',
         amount: params.amount,
-        amount_received: 0,
+        amount_received,
         currency: params.currency,
-        status: 'requires_payment_method',
+        status,
         client_secret: clientSecret,
         created: Math.floor(Date.now() / 1000),
         livemode: false,
@@ -105,10 +117,11 @@ export class MockStripe {
         automatic_payment_methods: params.automatic_payment_methods,
         description: params.description,
         receipt_email: params.receipt_email,
+        payment_method: params.payment_method,
       };
 
       paymentIntents.set(id, paymentIntent);
-      console.log('[MockStripe] Created payment intent:', id);
+      console.log('[MockStripe] Created payment intent:', id, 'status:', status);
 
       return paymentIntent;
     },
