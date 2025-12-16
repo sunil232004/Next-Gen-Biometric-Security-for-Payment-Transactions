@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { ChevronLeft, Camera, ChevronRight, Shield, HelpCircle, Settings, ShoppingBag, User, Users, FileText, HelpCircleIcon } from 'lucide-react';
+import { ChevronLeft, Camera, ChevronRight, Shield, HelpCircle, Settings, ShoppingBag, User, Users, FileText, HelpCircleIcon, Fingerprint } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
+import BiometricManagement from '@/components/BiometricManagement';
 
 interface SettingItem {
   id: string;
@@ -27,12 +29,14 @@ interface UserData {
 export default function ProfileSettings() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { user: authUser, biometrics, refreshUser } = useAuth();
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
+  const [isBiometricModalOpen, setIsBiometricModalOpen] = useState(false);
 
-  // User ID for the API calls - would normally come from authentication
-  const userId = 1; // Demo user ID
+  // Use authenticated user ID, fallback to 1 for demo
+  const userId = authUser?._id || 1;
 
   // Fetch user data from API
   const { data: user, isLoading } = useQuery<UserData>({
@@ -111,6 +115,14 @@ export default function ProfileSettings() {
       hasArrow: false,
     },
     {
+      id: "biometric",
+      icon: <Fingerprint className="w-6 h-6 text-blue-500" />,
+      title: "Biometric Security",
+      description: `Manage fingerprint, face & voice authentication (${biometrics?.length || 0} registered)`,
+      action: () => setIsBiometricModalOpen(true),
+      hasArrow: true,
+    },
+    {
       id: "help",
       icon: <HelpCircle className="w-6 h-6 text-blue-500" />,
       title: "Help & Support",
@@ -168,15 +180,24 @@ export default function ProfileSettings() {
     });
   };
 
-  const handleSettingItemClick = (id: string) => {
-    toast({
-      title: "Coming Soon",
-      description: `${id} feature will be available soon`,
-    });
+  const handleSettingItemClick = (item: SettingItem) => {
+    if (item.action) {
+      item.action();
+    } else {
+      toast({
+        title: "Coming Soon",
+        description: `${item.title} feature will be available soon`,
+      });
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* Biometric Management Modal */}
+      <BiometricManagement 
+        isOpen={isBiometricModalOpen} 
+        onClose={() => setIsBiometricModalOpen(false)} 
+      />
       {/* Header */}
       <div className="bg-[#0d4bb5] text-white p-4 flex items-center justify-between">
         <button 
@@ -299,8 +320,8 @@ export default function ProfileSettings() {
         {settingItems.map((item) => (
           <div 
             key={item.id}
-            className="p-4 border-b border-gray-100 flex items-start"
-            onClick={() => item.id === "security" && item.action ? item.action() : handleSettingItemClick(item.title)}
+            className="p-4 border-b border-gray-100 flex items-start cursor-pointer"
+            onClick={() => handleSettingItemClick(item)}
           >
             <div className="mr-3 mt-1">{item.icon}</div>
             <div className="flex-1">
@@ -310,7 +331,10 @@ export default function ProfileSettings() {
             {item.id === "security" ? (
               <button 
                 className="px-4 py-1 rounded-full text-sm border border-blue-500 text-blue-500"
-                onClick={handleActivateSecurityShield}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleActivateSecurityShield();
+                }}
               >
                 Activate
               </button>

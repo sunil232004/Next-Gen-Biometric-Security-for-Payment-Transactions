@@ -4,6 +4,8 @@ import { useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { ChevronLeft, X, RefreshCw, QrCode, AtSign, Camera, ImageIcon, Image, Trash2 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
+import { useAuth } from '@/contexts/AuthContext';
+import PaymentVerificationGate from '@/components/PaymentVerificationGate';
 
 interface PaymentData {
   upiId?: string;
@@ -22,6 +24,7 @@ interface RecentContact {
 export default function QRScanner() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { user, biometrics } = useAuth();
   const [delay] = useState(500);
   const [result, setResult] = useState<string | null>(null);
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
@@ -34,6 +37,7 @@ export default function QRScanner() {
   const [showQROptions, setShowQROptions] = useState(true);
   const [scanMode, setScanMode] = useState<'camera' | 'gallery'>('camera');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showVerification, setShowVerification] = useState(false);
   
   const recentContacts: RecentContact[] = [
     { id: 1, name: 'Harshith VKIT 2', upiId: 'harshith@okaxis', photoUrl: 'https://randomuser.me/api/portraits/men/32.jpg' },
@@ -109,7 +113,31 @@ export default function QRScanner() {
     setShowManualEntry(!showManualEntry);
   };
 
-  const completePayment = async () => {
+  const initiatePayment = () => {
+    if (amount <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid amount greater than 0",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Check if user has biometrics set up
+    if (biometrics && biometrics.length > 0) {
+      setShowVerification(true);
+    } else {
+      // No biometrics, proceed with payment directly
+      completePayment();
+    }
+  };
+
+  const handleVerificationSuccess = (method: string) => {
+    setShowVerification(false);
+    completePayment(method);
+  };
+
+  const completePayment = async (authMethod?: string) => {
     if (amount <= 0) {
       toast({
         title: "Invalid Amount",
@@ -122,8 +150,8 @@ export default function QRScanner() {
     setIsProcessing(true);
 
     try {
-      // Use mock user ID 1 for demonstration
-      const fromUserId = 1;
+      // Use authenticated user ID or fallback
+      const fromUserId = user?._id || 1;
       
       // Create transaction
       const transactionData = {
@@ -133,6 +161,7 @@ export default function QRScanner() {
         status: "success",
         description: `Payment to ${paymentData?.name || paymentData?.upiId}`,
         timestamp: new Date().toISOString(),
+        authMethod: authMethod || 'none',
         createdAt: new Date().toISOString(),
         metadata: JSON.stringify({
           recipient: paymentData?.name || paymentData?.upiId,
@@ -376,7 +405,7 @@ export default function QRScanner() {
 
             <button
               className="w-full bg-[#0d4bb5] text-white py-3 rounded-md font-medium flex items-center justify-center"
-              onClick={completePayment}
+              onClick={initiatePayment}
               disabled={isProcessing}
             >
               {isProcessing ? (
@@ -391,6 +420,16 @@ export default function QRScanner() {
           </div>
         </div>
       )}
+
+      {/* Biometric Verification Modal */}
+      <PaymentVerificationGate
+        isOpen={showVerification}
+        onClose={() => setShowVerification(false)}
+        onSuccess={handleVerificationSuccess}
+        amount={amount}
+        recipient={paymentData?.name || paymentData?.upiId}
+        description="QR Payment"
+      />
     </div>
   );
 }

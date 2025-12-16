@@ -109,6 +109,7 @@ export class BiometricController {
       if (!type || !data) {
         return res.status(400).json({
           success: false,
+          verified: false,
           message: 'Biometric type and data are required'
         });
       }
@@ -118,6 +119,7 @@ export class BiometricController {
       if (!result.success) {
         return res.status(401).json({
           success: false,
+          verified: false,
           message: result.message
         });
       }
@@ -126,6 +128,7 @@ export class BiometricController {
 
       res.json({
         success: true,
+        verified: true,
         message: result.message,
         biometricId: result.biometricId,
       });
@@ -133,6 +136,7 @@ export class BiometricController {
       console.error('[Biometric] Verify error:', error);
       res.status(500).json({
         success: false,
+        verified: false,
         message: 'Failed to verify biometric'
       });
     }

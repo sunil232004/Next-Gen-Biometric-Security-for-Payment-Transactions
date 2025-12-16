@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Fingerprint, Camera, Mic, AlertCircle, Check } from 'lucide-react';
+import { X, Fingerprint, Camera, Mic, AlertCircle, Check, Smartphone } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { getApiUrl } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { useWebAuthn } from "@/hooks/use-webauthn";
 
 type BiometricType = 'fingerprint' | 'face' | 'voice';
 
@@ -11,7 +12,7 @@ interface BiometricAuthModalProps {
   onClose: () => void;
   onSuccess: (type: BiometricType, data: string) => void;
   mode: 'register' | 'verify';
-  userId?: number;
+  userId?: number; // Optional - will use AuthContext if not provided
 }
 
 // Add necessary feature policy meta tags
@@ -27,9 +28,23 @@ export default function BiometricAuthModal({
   onClose,
   onSuccess,
   mode,
-  userId = 1
+  userId: propUserId
 }: BiometricAuthModalProps) {
   const { toast } = useToast();
+  const { user, refreshUser, biometrics } = useAuth();
+  
+  // WebAuthn hook for fingerprint
+  const {
+    isSupported: webAuthnSupported,
+    isPlatformAvailable,
+    registerFingerprint: registerWebAuthnFingerprint,
+    verifyFingerprint: verifyWebAuthnFingerprint
+  } = useWebAuthn();
+  
+  // Use prop userId if provided, otherwise use authenticated user's id
+  const userId = propUserId || user?._id;
+  const webAuthnAvailable = webAuthnSupported && isPlatformAvailable;
+  
   const [activeMethod, setActiveMethod] = useState<BiometricType | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanComplete, setScanComplete] = useState(false);
@@ -78,12 +93,76 @@ export default function BiometricAuthModal({
     onClose();
   };
 
-  const startFingerprint = () => {
+  const startFingerprint = async () => {
     setActiveMethod('fingerprint');
     setScanning(true);
     setErrorMessage("");
     
-    // Simulating fingerprint scan
+    // Try WebAuthn first for registration/verification
+    if (webAuthnAvailable) {
+      try {
+        if (mode === 'register') {
+          const result = await registerWebAuthnFingerprint(label || 'My Fingerprint');
+          
+          if (result.success && result.credential) {
+            setScanComplete(true);
+            setScanSuccess(true);
+            toast({
+              title: "Registration Successful",
+              description: "Your fingerprint has been registered using device biometrics.",
+            });
+            setTimeout(() => {
+              onSuccess('fingerprint', JSON.stringify(result.credential));
+            }, 1500);
+            return;
+          } else if (result.error?.includes('cancel') || result.error?.includes('abort')) {
+            setScanning(false);
+            setErrorMessage("Fingerprint registration was cancelled.");
+            return;
+          }
+          // Fall through to simulated if WebAuthn fails
+        } else {
+          // Verify mode - get stored credential IDs
+          const fingerprintBiometric = biometrics?.find(b => b.type === 'fingerprint');
+          let credentialIds: string[] | undefined;
+          
+          if (fingerprintBiometric?.data) {
+            try {
+              const bioData = JSON.parse(fingerprintBiometric.data);
+              if (bioData.webauthn && bioData.credentialId) {
+                credentialIds = [bioData.credentialId];
+              }
+            } catch (e) {
+              // Not WebAuthn data
+            }
+          }
+          
+          const result = await verifyWebAuthnFingerprint(credentialIds);
+          
+          if (result.success) {
+            setScanComplete(true);
+            setScanSuccess(true);
+            toast({
+              title: "Verification Successful",
+              description: "Your fingerprint has been verified.",
+            });
+            setTimeout(() => {
+              onSuccess('fingerprint', 'webauthn_verified');
+            }, 1500);
+            return;
+          } else if (result.error?.includes('cancel') || result.error?.includes('abort')) {
+            setScanning(false);
+            setErrorMessage("Fingerprint verification was cancelled.");
+            return;
+          }
+          // Fall through to simulated if WebAuthn fails
+        }
+      } catch (err) {
+        console.log('WebAuthn failed, falling back to simulated:', err);
+      }
+    }
+    
+    // Fallback to simulated fingerprint scan
     timerRef.current = setTimeout(() => {
       const fingerprintData = generateFingerprintData();
       
@@ -204,41 +283,48 @@ export default function BiometricAuthModal({
     setScanning(false);
     setScanComplete(true);
 
+    if (!userId) {
+      setScanSuccess(false);
+      setErrorMessage("User not authenticated. Please log in.");
+      return;
+    }
+
     try {
       const biometricData = {
-        userId,
         type,
         label: label || `My ${type.charAt(0).toUpperCase() + type.slice(1)}`,
-        data,
-        createdAt: new Date().toISOString()
+        data
       };
 
-      const response = await fetch(getApiUrl("/api/biometric/register"), {
+      const token = localStorage.getItem('paytm_auth_token');
+      const response = await apiRequest("/api/v2/biometric/register", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Authorization": token ? `Bearer ${token}` : ""
         },
-        body: JSON.stringify(biometricData)
+        body: biometricData
       });
-      const result = await response.json();
 
-      if (response.ok) {
+      if (response.success) {
         setScanSuccess(true);
         toast({
           title: "Registration Successful",
           description: `Your ${type} has been registered successfully.`,
         });
         
+        // Refresh user data to get updated biometrics
+        await refreshUser();
+        
         setTimeout(() => {
           onSuccess(type, data);
         }, 1500);
       } else {
         setScanSuccess(false);
-        setErrorMessage(result.message || "Registration failed. Please try again.");
+        setErrorMessage(response.message || "Registration failed. Please try again.");
       }
-    } catch (error) {
+    } catch (error: any) {
       setScanSuccess(false);
-      setErrorMessage("An error occurred during registration. Please try again.");
+      setErrorMessage(error.message || "An error occurred during registration. Please try again.");
     }
   };
 
@@ -246,23 +332,28 @@ export default function BiometricAuthModal({
     setScanning(false);
     setScanComplete(true);
 
+    if (!userId) {
+      setScanSuccess(false);
+      setErrorMessage("User not authenticated. Please log in.");
+      return;
+    }
+
     try {
       const verifyData = {
-        userId,
         type,
         data
       };
 
-      const response = await fetch(getApiUrl("/api/biometric/verify"), {
+      const token = localStorage.getItem('paytm_auth_token');
+      const response = await apiRequest("/api/v2/biometric/verify", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Authorization": token ? `Bearer ${token}` : ""
         },
-        body: JSON.stringify(verifyData)
+        body: verifyData
       });
-      const result = await response.json();
 
-      if (response.ok && result.verified) {
+      if (response.success && response.verified) {
         setScanSuccess(true);
         toast({
           title: "Verification Successful",
@@ -274,11 +365,11 @@ export default function BiometricAuthModal({
         }, 1500);
       } else {
         setScanSuccess(false);
-        setErrorMessage(result.message || "Verification failed. Please try again.");
+        setErrorMessage(response.message || "Verification failed. Please try again.");
       }
-    } catch (error) {
+    } catch (error: any) {
       setScanSuccess(false);
-      setErrorMessage("An error occurred during verification. Please try again.");
+      setErrorMessage(error.message || "An error occurred during verification. Please try again.");
     }
   };
 

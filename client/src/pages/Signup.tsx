@@ -7,6 +7,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Loader2, Mail, Lock, User, Phone, Eye, EyeOff, Check } from 'lucide-react';
+import BiometricOnboarding from '../components/BiometricOnboarding';
 
 export default function Signup() {
   const [, navigate] = useLocation();
@@ -22,11 +23,21 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showBiometricOnboarding, setShowBiometricOnboarding] = useState(false);
 
-  // Redirect if already authenticated
-  if (isAuthenticated) {
-    navigate('/');
-    return null;
+  // Redirect if already authenticated and not in onboarding
+  if (isAuthenticated && !showBiometricOnboarding) {
+    // Check if biometric onboarding was completed or skipped
+    const onboardingComplete = localStorage.getItem('biometricOnboardingComplete');
+    const onboardingSkipped = localStorage.getItem('biometricOnboardingSkipped');
+    
+    if (!onboardingComplete && !onboardingSkipped) {
+      // First time login, show onboarding
+      setShowBiometricOnboarding(true);
+    } else {
+      navigate('/');
+      return null;
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,7 +88,8 @@ export default function Signup() {
       });
       
       if (result.success) {
-        navigate('/');
+        // Show biometric onboarding instead of immediately navigating home
+        setShowBiometricOnboarding(true);
       } else {
         setError(result.message || 'Signup failed');
       }
@@ -87,6 +99,27 @@ export default function Signup() {
       setIsLoading(false);
     }
   };
+
+  const handleOnboardingComplete = () => {
+    setShowBiometricOnboarding(false);
+    navigate('/');
+  };
+
+  const handleOnboardingSkip = () => {
+    setShowBiometricOnboarding(false);
+    navigate('/');
+  };
+
+  // Show biometric onboarding if needed
+  if (showBiometricOnboarding) {
+    return (
+      <BiometricOnboarding 
+        isOpen={true}
+        onComplete={handleOnboardingComplete}
+        onSkip={handleOnboardingSkip}
+      />
+    );
+  }
 
   const passwordStrength = () => {
     const password = formData.password;

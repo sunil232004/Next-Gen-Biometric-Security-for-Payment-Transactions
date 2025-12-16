@@ -328,6 +328,48 @@ export class AuthController {
     }
   }
 
+  // Verify password (for sensitive operations)
+  static async verifyPassword(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user._id;
+      const { password } = req.body;
+
+      if (!password) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password is required'
+        });
+      }
+
+      const user = await UserModel.findById(userId);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      const isValid = await UserModel.comparePassword(password, user.password);
+      if (!isValid) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid password'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Password verified'
+      });
+    } catch (error) {
+      console.error('[Auth] Verify password error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to verify password'
+      });
+    }
+  }
+
   // Delete account and all data
   static async deleteAccount(req: Request, res: Response) {
     try {

@@ -7,9 +7,10 @@ import { apiRequest } from "@/lib/queryClient";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import BiometricAuthModal from "@/components/BiometricAuthModal";
+import PaymentVerificationGate from "@/components/PaymentVerificationGate";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import TransactionReceipt from "@/components/TransactionReceipt";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Contact {
   id: number;
@@ -23,6 +24,7 @@ export default function MoneyTransfer() {
   const [_, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, biometrics } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -30,7 +32,7 @@ export default function MoneyTransfer() {
   const [note, setNote] = useState("");
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [isBiometricModalOpen, setIsBiometricModalOpen] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [completedTransaction, setCompletedTransaction] = useState<any>(null);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -86,24 +88,34 @@ export default function MoneyTransfer() {
         });
         return;
       }
-      setIsBiometricModalOpen(true);
+      // Show biometric verification if user has biometrics
+      if (biometrics && biometrics.length > 0) {
+        setShowVerification(true);
+      } else {
+        // No biometrics, proceed directly
+        processTransfer('none');
+      }
     }
   };
 
-  const handleBiometricSuccess = async (type: string, data: string) => {
-    setIsBiometricModalOpen(false);
+  const handleVerificationSuccess = async (method: string) => {
+    setShowVerification(false);
+    await processTransfer(method);
+  };
+
+  const processTransfer = async (authMethod: string) => {
     setLoading(true);
 
     try {
       // Create transaction data with metadata
       const transactionData = {
-        userId: 1, // In a real app, get from auth context
+        userId: user?._id || 1,
         type: "transfer_out",
         amount: parseFloat(amount),
         status: "success",
         description: `Money Transfer to ${selectedContact?.name} (${selectedContact?.upiId})${note ? ` - ${note}` : ''}`,
         timestamp: new Date().toISOString(),
-        authMethod: type, // fingerprint, face, or voice
+        authMethod: authMethod,
         createdAt: new Date().toISOString(),
         metadata: JSON.stringify({
           recipientName: selectedContact?.name,
@@ -120,7 +132,7 @@ export default function MoneyTransfer() {
       });
 
       // Get the transaction data from response
-      const transaction = await response.json();
+      const transaction = response;
 
       // Set the completed transaction data
       setCompletedTransaction(transaction);
@@ -168,7 +180,13 @@ export default function MoneyTransfer() {
       });
       return;
     }
-    setIsBiometricModalOpen(true);
+    // Show biometric verification if user has biometrics
+    if (biometrics && biometrics.length > 0) {
+      setShowVerification(true);
+    } else {
+      // No biometrics, proceed directly
+      processTransfer('none');
+    }
   };
 
 
@@ -373,12 +391,14 @@ export default function MoneyTransfer() {
         )}
       </main>
 
-      <BiometricAuthModal
-        isOpen={isBiometricModalOpen}
-        onClose={() => setIsBiometricModalOpen(false)}
-        onSuccess={handleBiometricSuccess}
-        mode="verify"
-        userId={1} // In a real app, get from auth context
+      {/* Payment Verification Modal */}
+      <PaymentVerificationGate
+        isOpen={showVerification}
+        onClose={() => setShowVerification(false)}
+        onSuccess={handleVerificationSuccess}
+        amount={parseFloat(amount) || 0}
+        recipient={selectedContact?.name}
+        description={`Transfer to ${selectedContact?.upiId}`}
       />
 
       {showReceipt && completedTransaction && (

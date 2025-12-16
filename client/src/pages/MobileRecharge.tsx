@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { UPIPinVerification } from "@/components/UpiPinVerification";
 import TransactionReceipt from "@/components/TransactionReceipt";
+import PaymentVerificationGate from "@/components/PaymentVerificationGate";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface RechargeOperator {
   id: number;
@@ -28,6 +30,7 @@ export default function MobileRecharge() {
   const [_, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, biometrics } = useAuth();
   
   const [phoneNumber, setPhoneNumber] = useState("");
   const [operator, setOperator] = useState<RechargeOperator | null>(null);
@@ -35,6 +38,7 @@ export default function MobileRecharge() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showUPIPin, setShowUPIPin] = useState(false);
+  const [showBiometricVerification, setShowBiometricVerification] = useState(false);
   const [completedTransaction, setCompletedTransaction] = useState<any>(null);
   const [showReceipt, setShowReceipt] = useState(false);
   
@@ -79,8 +83,18 @@ export default function MobileRecharge() {
         variant: "destructive"
       });
     } else if (step === 3 && selectedPlan) {
-      setShowUPIPin(true);
+      // Check if user has biometrics, use that first
+      if (biometrics && biometrics.length > 0) {
+        setShowBiometricVerification(true);
+      } else {
+        setShowUPIPin(true);
+      }
     }
+  };
+
+  const handleBiometricSuccess = async (method: string) => {
+    setShowBiometricVerification(false);
+    await processRecharge(method);
   };
 
   const handleBack = () => {
@@ -93,18 +107,22 @@ export default function MobileRecharge() {
 
   const handleUPIPinSuccess = async () => {
     setShowUPIPin(false);
+    await processRecharge('upi_pin');
+  };
+
+  const processRecharge = async (authMethod: string) => {
     setLoading(true);
     
     try {
       // Create transaction data with metadata
       const transactionData = {
-        userId: 1, // In a real app, get from auth context
+        userId: user?._id || 1,
         type: "recharge",
         amount: selectedPlan?.amount || 0,
         status: "success",
         description: `Mobile Recharge for ${phoneNumber} (${operator?.name}) - ${selectedPlan?.data}`,
         timestamp: new Date().toISOString(),
-        authMethod: "upi_pin",
+        authMethod: authMethod,
         createdAt: new Date().toISOString(),
         metadata: JSON.stringify({
           recipientName: "Your Mobile Number",
@@ -270,7 +288,7 @@ export default function MobileRecharge() {
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-semibold mb-4">Complete Payment</h2>
             <UPIPinVerification
-              userId={1} // In a real app, get from auth context
+              userId={user?._id ? parseInt(user._id) : 1}
               amount={selectedPlan.amount}
               purpose="mobile_recharge"
               onSuccess={handleUPIPinSuccess}
@@ -278,6 +296,18 @@ export default function MobileRecharge() {
             />
           </div>
         </div>
+      )}
+
+      {/* Biometric Verification Modal */}
+      {selectedPlan && (
+        <PaymentVerificationGate
+          isOpen={showBiometricVerification}
+          onClose={() => setShowBiometricVerification(false)}
+          onSuccess={handleBiometricSuccess}
+          amount={selectedPlan.amount}
+          recipient={`${operator?.name} - ${phoneNumber}`}
+          description="Mobile Recharge"
+        />
       )}
       
       {showReceipt && completedTransaction && (

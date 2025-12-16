@@ -18,6 +18,7 @@ interface Biometric {
   _id: string;
   type: 'fingerprint' | 'face' | 'voice';
   label?: string;
+  data?: string; // Stored biometric data (may include WebAuthn credentialId)
   isActive: boolean;
   lastUsed?: string;
   createdAt: string;

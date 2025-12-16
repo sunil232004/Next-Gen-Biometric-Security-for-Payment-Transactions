@@ -14,6 +14,7 @@ router.post('/logout-all', requireAuth, AuthController.logoutAll);
 router.get('/me', requireAuth, AuthController.me);
 router.put('/profile', requireAuth, AuthController.updateProfile);
 router.put('/password', requireAuth, AuthController.changePassword);
+router.post('/verify-password', requireAuth, AuthController.verifyPassword);
 router.post('/upi-pin', requireAuth, AuthController.setUpiPin);
 router.post('/verify-upi-pin', requireAuth, AuthController.verifyUpiPin);
 router.delete('/account', requireAuth, AuthController.deleteAccount);

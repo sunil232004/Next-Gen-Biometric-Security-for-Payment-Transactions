@@ -12,8 +12,8 @@ router.get('/', BiometricController.getAll);
 router.get('/:type', BiometricController.getByType);
 router.post('/register', BiometricController.register);
 router.post('/verify', BiometricController.verify);
-router.put('/:id/toggle', BiometricController.toggle);
-router.put('/:id/label', BiometricController.updateLabel);
+router.patch('/:id/toggle', BiometricController.toggle);
+router.patch('/:id/label', BiometricController.updateLabel);
 router.delete('/:id', BiometricController.delete);
 
 export default router;
