@@ -137,20 +137,33 @@ async function initializeApp() {
     });
 
     isInitialized = true;
-
-    // Start the server
-    const port = process.env.PORT || 5000;
-    httpServer.listen(port, () => {
-      log(`Server running at http://localhost:${port}`);
-    });
   } catch (error) {
     log(`Failed to initialize the app: ${error}`, 'express');
     throw error;
   }
 }
 
-// Initialize the app
-initializeApp();
+// Check if running on Vercel or locally
+const isVercel = !!process.env.VERCEL;
 
-// Export the Express API
+if (!isVercel) {
+  // Local development - listen on a port
+  initializeApp().then(() => {
+    const port = process.env.PORT || 5000;
+    httpServer.listen(port, () => {
+      log(`Server running at http://localhost:${port}`);
+    });
+  }).catch(err => {
+    log(`Failed to start server: ${err}`, 'express');
+    process.exit(1);
+  });
+}
+
+// Export the Express app for both Vercel and local use
 export default app;
+
+// Export handler for Vercel
+export async function handler(req: any, res: any) {
+  await initializeApp();
+  return app(req, res);
+}

@@ -11,5 +11,9 @@
       "src": "/(.*)",
       "dest": "index.ts"
     }
-  ]
+  ],
+  "env": {
+    "MONGODB_URI": "@mongodb_uri",
+    "STRIPE_SECRET_KEY": "@stripe_secret_key"
+  }
 }
