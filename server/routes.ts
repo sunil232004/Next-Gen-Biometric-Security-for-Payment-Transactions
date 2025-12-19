@@ -9,6 +9,7 @@ import authRoutes from './routes/auth.routes.js';
 import biometricRoutes from './routes/biometric.routes.js';
 import transactionRoutes from './routes/transaction.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
+import paymentHistoryRoutes from './routes/paymentHistory.routes.js';
 
 // Import for mock Stripe
 import { createStripeInstance, MockStripe } from "./services/stripe.js";
@@ -68,6 +69,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Payment routes: /api/v2/payments/*
   app.use('/api/v2/payments', paymentRoutes);
+
+  // Payment History routes: /api/v2/payment-history/*
+  app.use('/api/v2/payment-history', paymentHistoryRoutes);
 
   // ============================================
   // LEGACY API ROUTES (v1 - backward compatibility)

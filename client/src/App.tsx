@@ -27,6 +27,7 @@ import PersonalLoanApplication from "@/pages/PersonalLoanApplication";
 import PersonalLoanApproved from "@/pages/PersonalLoanApproved";
 import PaymentSuccess from "@/pages/PaymentSuccess";
 import SecurityCredentials from "@/pages/SecurityCredentials";
+import PaymentHistoryPage from "@/pages/PaymentHistoryPage";
 import { Loader2 } from "lucide-react";
 
 // Protected route wrapper
@@ -118,6 +119,9 @@ function Router() {
       </Route>
       <Route path="/security-credentials">
         {() => <ProtectedRoute component={SecurityCredentials} />}
+      </Route>
+      <Route path="/payment-history">
+        {() => <ProtectedRoute component={PaymentHistoryPage} />}
       </Route>
       <Route component={NotFound} />
     </Switch>
