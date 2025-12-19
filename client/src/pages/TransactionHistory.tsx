@@ -52,7 +52,7 @@ export default function TransactionHistory() {
     queryFn: async () => {
       const response = await fetch(getApiUrl(`/api/v2/payment-history?limit=100`), {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('paytm_auth_token')}`,
           'Content-Type': 'application/json'
         },
         credentials: 'include'

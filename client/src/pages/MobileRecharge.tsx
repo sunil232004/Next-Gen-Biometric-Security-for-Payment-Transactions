@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { ChevronLeft, Phone, BadgeCheck, AlertCircle } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { getApiUrl } from "@/lib/api";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -114,55 +114,62 @@ export default function MobileRecharge() {
     setLoading(true);
     
     try {
-      // Create transaction data with metadata
-      const transactionData = {
-        userId: user?._id || 1,
-        type: "recharge",
-        amount: selectedPlan?.amount || 0,
-        status: "success",
-        description: `Mobile Recharge for ${phoneNumber} (${operator?.name}) - ${selectedPlan?.data}`,
-        timestamp: new Date().toISOString(),
-        authMethod: authMethod,
-        createdAt: new Date().toISOString(),
-        metadata: JSON.stringify({
-          recipientName: "Your Mobile Number",
-          phoneNumber: phoneNumber,
-          operator: operator?.name,
-          plan: selectedPlan?.data,
-          validity: selectedPlan?.validity
-        })
-      };
+      const token = localStorage.getItem('paytm_auth_token');
       
-      // Create a transaction
-      const response = await apiRequest("/api/transaction", {
+      // Use v2 recharge API with proper authentication
+      const response = await fetch(getApiUrl("/api/v2/payments/recharge"), {
         method: "POST",
-        body: transactionData
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          phoneNumber: phoneNumber,
+          operatorId: operator?.id,
+          operatorName: operator?.name,
+          planId: selectedPlan?.id,
+          amount: selectedPlan?.amount || 0,
+          planDetails: {
+            data: selectedPlan?.data,
+            validity: selectedPlan?.validity,
+            description: selectedPlan?.description
+          },
+          pin: '1234' // Will be overridden by biometric if used
+        })
       });
 
-      // Merge server response with original data (server may not return all fields)
-      const serverTransaction = response?.transaction || response;
-      const transaction = {
-        ...transactionData,
-        ...serverTransaction,
-        id: serverTransaction?.id || serverTransaction?._id || Date.now(),
-        amount: selectedPlan?.amount || 0,
-        description: transactionData.description,
-        authMethod: authMethod,
-        metadata: transactionData.metadata
-      };
-      
-      // Set the completed transaction and show receipt
-      setCompletedTransaction(transaction);
-      setShowReceipt(true);
+      const result = await response.json();
 
-      // Invalidate transactions cache to refresh data
-      queryClient.invalidateQueries({queryKey: ["/api/transactions"]});
-      queryClient.invalidateQueries({queryKey: ['payment-history']});
-    } catch (error) {
+      if (result.success) {
+        const transaction = {
+          id: result.transaction?._id || result.transaction?.transactionId || Date.now(),
+          type: "recharge",
+          amount: selectedPlan?.amount || 0,
+          status: "success",
+          description: `Mobile Recharge for ${phoneNumber} (${operator?.name}) - ${selectedPlan?.data}`,
+          timestamp: new Date().toISOString(),
+          authMethod: authMethod,
+          recipientName: "Your Mobile Number",
+          phoneNumber: phoneNumber,
+          ...result.transaction
+        };
+        
+        // Set the completed transaction and show receipt
+        setCompletedTransaction(transaction);
+        setShowReceipt(true);
+
+        // Invalidate transactions cache to refresh data
+        queryClient.invalidateQueries({queryKey: ["/api/transactions"]});
+        queryClient.invalidateQueries({queryKey: ['payment-history']});
+      } else {
+        throw new Error(result.message || "Recharge failed");
+      }
+    } catch (error: any) {
       console.error("Recharge failed:", error);
       toast({
         title: "Recharge Failed",
-        description: "There was an error processing your recharge. Please try again.",
+        description: error.message || "There was an error processing your recharge. Please try again.",
         variant: "destructive"
       });
     } finally {

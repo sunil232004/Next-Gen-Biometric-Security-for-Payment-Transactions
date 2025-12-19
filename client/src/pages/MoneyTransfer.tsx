@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { ChevronLeft, Users, Search, BadgeCheck, CheckCircle2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { getApiUrl } from "@/lib/api";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -107,57 +107,60 @@ export default function MoneyTransfer() {
     setLoading(true);
 
     try {
-      // Create transaction data with metadata
-      const transactionData = {
-        userId: user?._id || 1,
-        type: "transfer_out",
-        amount: parseFloat(amount),
-        status: "success",
-        description: `Money Transfer to ${selectedContact?.name} (${selectedContact?.upiId})${note ? ` - ${note}` : ''}`,
-        timestamp: new Date().toISOString(),
-        authMethod: authMethod,
-        createdAt: new Date().toISOString(),
-        metadata: JSON.stringify({
-          recipientName: selectedContact?.name,
-          phoneNumber: selectedContact?.phoneNumber,
-          upiId: selectedContact?.upiId,
-          note: note || undefined
-        })
-      };
-
-      // Create a transaction
-      const response = await apiRequest("/api/transaction", {
+      const token = localStorage.getItem('paytm_auth_token');
+      
+      // Use v2 transfer API with proper authentication
+      const response = await fetch(getApiUrl("/api/v2/payments/transfer"), {
         method: "POST",
-        body: transactionData
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          recipientUpiId: selectedContact?.upiId,
+          recipientName: selectedContact?.name,
+          amount: parseFloat(amount),
+          pin: '1234', // Will be overridden by biometric if used
+          note: note || undefined,
+          authMethod: authMethod
+        })
       });
 
-      // Merge server response with original data (server may not return all fields)
-      const serverTransaction = response?.transaction || response;
-      const transaction = {
-        ...transactionData,
-        ...serverTransaction,
-        id: serverTransaction?.id || serverTransaction?._id || Date.now(),
-        amount: parseFloat(amount),
-        description: transactionData.description,
-        authMethod: authMethod,
-        metadata: transactionData.metadata
-      };
+      const result = await response.json();
 
-      // Set the completed transaction data
-      setCompletedTransaction(transaction);
+      if (result.success) {
+        // Set the completed transaction data
+        const transaction = {
+          id: result.transaction?._id || result.transaction?.transactionId || Date.now(),
+          type: "transfer_out",
+          amount: parseFloat(amount),
+          status: "success",
+          description: `Money Transfer to ${selectedContact?.name} (${selectedContact?.upiId})${note ? ` - ${note}` : ''}`,
+          timestamp: new Date().toISOString(),
+          authMethod: authMethod,
+          recipientName: selectedContact?.name,
+          upiId: selectedContact?.upiId,
+          ...result.transaction
+        };
+        
+        setCompletedTransaction(transaction);
 
-      // Invalidate transactions cache to refresh data
-      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      queryClient.invalidateQueries({ queryKey: ['payment-history'] });
+        // Invalidate transactions cache to refresh data
+        queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+        queryClient.invalidateQueries({ queryKey: ['payment-history'] });
 
-      // Show receipt instead of the step 3 success screen
-      setShowReceipt(true);
-      setPaymentSuccess(true);
-    } catch (error) {
+        // Show receipt instead of the step 3 success screen
+        setShowReceipt(true);
+        setPaymentSuccess(true);
+      } else {
+        throw new Error(result.message || "Transfer failed");
+      }
+    } catch (error: any) {
       console.error("Transfer failed:", error);
       toast({
         title: "Transfer Failed",
-        description: "There was an error processing your transfer. Please try again.",
+        description: error.message || "There was an error processing your transfer. Please try again.",
         variant: "destructive"
       });
     } finally {

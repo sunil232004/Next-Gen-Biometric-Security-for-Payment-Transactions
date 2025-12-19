@@ -205,9 +205,12 @@ export class UnifiedTransactionModel {
 
   // ==================== CRUD OPERATIONS ====================
 
-  static async create(data: Partial<IUnifiedTransaction>): Promise<IUnifiedTransaction> {
+  static async create(data: Partial<IUnifiedTransaction> & { userId: string | ObjectId }): Promise<IUnifiedTransaction> {
     const collection = this.getCollection();
     const now = new Date();
+
+    // Ensure userId is an ObjectId
+    const userObjId = typeof data.userId === 'string' ? new ObjectId(data.userId) : data.userId;
 
     // Determine direction if not provided
     let direction = data.direction;
@@ -223,7 +226,7 @@ export class UnifiedTransactionModel {
     const totalAmount = direction === 'debit' ? amount + fee + tax : amount;
 
     const transaction: IUnifiedTransaction = {
-      userId: data.userId!,
+      userId: userObjId,
       accountId: data.accountId,
       transactionId: data.transactionId || this.generateTransactionId(),
       type: data.type!,
@@ -275,7 +278,7 @@ export class UnifiedTransactionModel {
   }
 
   static async findByUserId(
-    userId: string | ObjectId,
+    userId: string | ObjectId | number,
     options: ITransactionFilterOptions = {}
   ): Promise<{ transactions: IUnifiedTransaction[]; total: number }> {
     const collection = this.getCollection();
@@ -295,8 +298,22 @@ export class UnifiedTransactionModel {
       sortOrder = 'desc',
     } = options;
 
-    const userObjId = typeof userId === 'string' ? new ObjectId(userId) : userId;
-    const query: any = { userId: userObjId };
+    // Handle both ObjectId, string, and legacy numeric userId
+    let query: any;
+    if (typeof userId === 'number') {
+      // Legacy numeric userId
+      query = { userId: userId };
+    } else if (typeof userId === 'string' && ObjectId.isValid(userId)) {
+      // ObjectId as string - query for both formats for compatibility
+      const userObjId = new ObjectId(userId);
+      query = { $or: [{ userId: userObjId }, { userId: userId }] };
+    } else if (userId instanceof ObjectId) {
+      // ObjectId instance - query for both formats
+      query = { $or: [{ userId: userId }, { userId: userId.toString() }] };
+    } else {
+      // Fallback - try as string
+      query = { userId: userId };
+    }
 
     // Apply filters
     if (type) {

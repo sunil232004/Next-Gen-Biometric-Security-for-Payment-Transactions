@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from 'wouter';
 import { ChevronLeft, CreditCard as CreditCardIcon, Calendar, Lock, Check, Wallet } from 'lucide-react';
-import { apiRequest, queryClient } from '@/lib/queryClient';
+import { queryClient } from '@/lib/queryClient';
+import { getApiUrl } from '@/lib/api';
 
 export default function AddMoney() {
   const [location, navigate] = useLocation();
@@ -39,24 +40,30 @@ export default function AddMoney() {
     setIsProcessing(true);
 
     try {
-      // Mock user ID 1 for demonstration
-      const userId = 1;
-
-      const response = await apiRequest("/api/card-payment", {
-        method: "POST", 
-        body: { 
-          userId, 
+      const token = localStorage.getItem('paytm_auth_token');
+      
+      const response = await fetch(getApiUrl("/api/v2/payments/add-money"), {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
           amount,
+          paymentMethodId: `pm_${cardNumber.slice(-4)}`,
           cardDetails: {
             cardNumber,
             expiryDate,
             cvv,
             cardholderName
           }
-        }
+        })
       });
 
-      if (response.ok) {
+      const result = await response.json();
+
+      if (result.success) {
         setIsSuccess(true);
         
         // Invalidate transaction caches
@@ -80,7 +87,7 @@ export default function AddMoney() {
           navigate("/");
         }, 2000);
       } else {
-        throw new Error("Failed to add money");
+        throw new Error(result.message || "Failed to add money");
       }
     } catch (error: any) {
       toast({

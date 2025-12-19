@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from 'wouter';
 import { ChevronLeft, CreditCard as CreditCardIcon, Calendar, Lock, Check, DollarSign } from 'lucide-react';
-import { apiRequest, queryClient } from '@/lib/queryClient';
+import { queryClient } from '@/lib/queryClient';
+import { getApiUrl } from '@/lib/api';
 
 interface CardPaymentForm {
   cardNumber: string;
@@ -70,48 +71,58 @@ export default function CreditCard() {
     setIsProcessing(true);
 
     try {
-      // Mock user ID 1 for demonstration
-      const userId = 1;
+      const token = localStorage.getItem('paytm_auth_token');
       
-      const response = await apiRequest("/api/card-payment", {
-        method: "POST", 
-        body: { 
-          userId, 
+      const response = await fetch(getApiUrl("/api/v2/payments/card"), {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
           amount: formData.amount,
+          paymentMethodId: `pm_${formData.cardNumber.replace(/\s/g, '').slice(-4)}`,
+          description: 'Credit card bill payment',
           cardDetails: {
             cardNumber: formData.cardNumber,
             expiryDate: formData.expiryDate,
             cvv: formData.cvv,
             cardholderName: formData.cardholderName
-          },
-          paymentType: 'credit_card_bill'
-        }
+          }
+        })
       });
 
-      setIsSuccess(true);
-      
-      // Invalidate transaction caches
-      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      queryClient.invalidateQueries({ queryKey: ['payment-history'] });
-      
-      toast({
-        title: "Payment Successful",
-        description: `₹${formData.amount} has been paid towards your credit card bill`,
-      });
-      
-      // Reset form after successful payment
-      setFormData({
-        cardNumber: '',
-        expiryDate: '',
-        cvv: '',
-        cardholderName: '',
-        amount: 0
-      });
-      
-      // Navigate back to home after 2 seconds
-      setTimeout(() => {
-        navigate("/");
-      }, 2000);
+      const result = await response.json();
+
+      if (result.success) {
+        setIsSuccess(true);
+        
+        // Invalidate transaction caches
+        queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+        queryClient.invalidateQueries({ queryKey: ['payment-history'] });
+        
+        toast({
+          title: "Payment Successful",
+          description: `₹${formData.amount} has been paid towards your credit card bill`,
+        });
+        
+        // Reset form after successful payment
+        setFormData({
+          cardNumber: '',
+          expiryDate: '',
+          cvv: '',
+          cardholderName: '',
+          amount: 0
+        });
+        
+        // Navigate back to home after 2 seconds
+        setTimeout(() => {
+          navigate("/");
+        }, 2000);
+      } else {
+        throw new Error(result.message || "Payment failed");
+      }
     } catch (error: any) {
       toast({
         title: "Payment Failed",

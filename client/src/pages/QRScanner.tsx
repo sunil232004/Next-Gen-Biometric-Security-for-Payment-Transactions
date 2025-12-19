@@ -3,7 +3,8 @@ import QrReader from 'react-qr-scanner';
 import { useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { ChevronLeft, X, RefreshCw, QrCode, AtSign, Camera, ImageIcon, Image, Trash2 } from 'lucide-react';
-import { apiRequest, queryClient } from '@/lib/queryClient';
+import { queryClient } from '@/lib/queryClient';
+import { getApiUrl } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import PaymentVerificationGate from '@/components/PaymentVerificationGate';
 
@@ -150,32 +151,27 @@ export default function QRScanner() {
     setIsProcessing(true);
 
     try {
-      // Use authenticated user ID or fallback
-      const fromUserId = user?._id || 1;
+      const token = localStorage.getItem('paytm_auth_token');
       
-      // Create transaction
-      const transactionData = {
-        userId: fromUserId,
-        type: "payment",
-        amount: amount,
-        status: "success",
-        description: `Payment to ${paymentData?.name || paymentData?.upiId}`,
-        timestamp: new Date().toISOString(),
-        authMethod: authMethod || 'none',
-        createdAt: new Date().toISOString(),
-        metadata: JSON.stringify({
-          recipient: paymentData?.name || paymentData?.upiId,
-          recipientId: paymentData?.userId || "unknown"
-        })
-      };
-
-      const response = await apiRequest("/api/transaction", {
+      // Use v2 UPI payment API with proper authentication
+      const response = await fetch(getApiUrl("/api/v2/payments/upi"), {
         method: "POST",
-        body: transactionData
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          recipientUpi: paymentData?.upiId,
+          amount: amount,
+          pin: '1234', // Will be overridden by biometric if used
+          description: `Payment to ${paymentData?.name || paymentData?.upiId}`
+        })
       });
+
+      const result = await response.json();
       
-      // apiRequest returns parsed JSON or empty array on error
-      if (response && response.success) {
+      if (result.success) {
         // Invalidate transaction caches
         queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
         queryClient.invalidateQueries({ queryKey: ['payment-history'] });
@@ -190,7 +186,7 @@ export default function QRScanner() {
           navigate("/");
         }, 2000);
       } else {
-        throw new Error(response?.message || "Failed to complete transaction");
+        throw new Error(result.message || "Failed to complete transaction");
       }
     } catch (error: any) {
       toast({
