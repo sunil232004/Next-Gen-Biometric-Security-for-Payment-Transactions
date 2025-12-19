@@ -81,6 +81,7 @@ export interface IUnifiedTransaction {
   
   // Core identification
   userId: ObjectId;
+  accountId?: string; // User's unique account ID for display
   transactionId: string; // Unique reference ID (e.g., TXN123456789)
   
   // Transaction details
@@ -223,6 +224,7 @@ export class UnifiedTransactionModel {
 
     const transaction: IUnifiedTransaction = {
       userId: data.userId!,
+      accountId: data.accountId,
       transactionId: data.transactionId || this.generateTransactionId(),
       type: data.type!,
       direction,
@@ -660,6 +662,7 @@ export class UnifiedTransactionModel {
       _id: normalized._id,
       transactionId: normalized.transactionId,
       userId: normalized.userId,
+      accountId: normalized.accountId,
       type: normalized.type,
       direction: normalized.direction,
       amount: normalized.amount,

@@ -74,10 +74,12 @@ if (!isVercel) {
           clientUserId = message.userId;
           
           // Add to connected clients map
-          if (!connectedClients.has(clientUserId)) {
-            connectedClients.set(clientUserId, new Set());
+          if (clientUserId) {
+            if (!connectedClients.has(clientUserId)) {
+              connectedClients.set(clientUserId, new Set());
+            }
+            connectedClients.get(clientUserId)?.add(ws);
           }
-          connectedClients.get(clientUserId)?.add(ws);
           
           log(`WebSocket authenticated for user: ${clientUserId}`);
           ws.send(JSON.stringify({ type: 'auth_success', userId: clientUserId }));

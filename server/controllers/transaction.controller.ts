@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { TransactionModel } from '../models/transaction.model.js';
+import { TransactionModel, TransactionType } from '../models/transaction.model.js';
 
 export class TransactionController {
   // Get all transactions for user
@@ -8,7 +8,7 @@ export class TransactionController {
       const userId = (req as any).user._id;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
-      const type = req.query.type as string;
+      const type = req.query.type as TransactionType | undefined;
 
       let query: any = { userId };
       if (type) {
@@ -18,7 +18,7 @@ export class TransactionController {
       const { transactions, total } = await TransactionModel.findByUserId(userId, { 
         page, 
         limit,
-        type 
+        type: type || undefined
       });
 
       res.json({

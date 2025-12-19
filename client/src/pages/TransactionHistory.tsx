@@ -19,15 +19,21 @@ import {
 
 // Transaction type definition
 interface Transaction {
-  id: number;
-  userId: number;
+  _id?: string;
+  id?: number;
+  userId: string;
+  accountId?: string;
+  transactionId?: string;
   amount: number;
   type: string;
+  direction?: string;
   status: string;
   description?: string;
   serviceId?: number;
   createdAt: string | Date;
   timestamp?: string | Date;
+  recipientName?: string;
+  paymentMethod?: string;
 }
 
 export default function TransactionHistory() {
@@ -40,15 +46,22 @@ export default function TransactionHistory() {
   // Get user ID - support both MongoDB _id (string) and legacy numeric id
   const userId = user?._id || '1';
 
-  // Fetch transactions
+  // Fetch transactions from unified API
   const { data: transactions, isLoading, error } = useQuery({
-    queryKey: [`/api/transactions/${userId}`],
+    queryKey: ['payment-history', userId],
     queryFn: async () => {
-      const response = await fetch(getApiUrl(`/api/transactions/${userId}`));
+      const response = await fetch(getApiUrl(`/api/v2/payment-history?limit=100`), {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch transactions");
       }
-      return response.json() as Promise<Transaction[]>;
+      const result = await response.json();
+      return result.data as Transaction[];
     },
     enabled: !!userId
   });
@@ -128,7 +141,10 @@ export default function TransactionHistory() {
         const matchesSearch = searchTerm 
           ? (transaction.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
              transaction.amount.toString().includes(searchTerm) ||
-             transaction.type.toLowerCase().includes(searchTerm.toLowerCase()))
+             transaction.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             transaction.accountId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             transaction.transactionId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             transaction.recipientName?.toLowerCase().includes(searchTerm.toLowerCase()))
           : true;
 
         const matchesFilter = filterType === "all" 
@@ -217,8 +233,8 @@ export default function TransactionHistory() {
           <div className="space-y-2 sm:space-y-4">
             {filteredTransactions.map((transaction) => (
               <div 
-                key={transaction.id}
-                className="flex items-start space-x-2.5 sm:space-x-3 p-2.5 sm:p-3 rounded-lg hover:bg-gray-50 active:bg-gray-100 cursor-pointer transition-colors"
+                key={transaction._id || transaction.id || transaction.transactionId}
+                className="flex items-start space-x-2.5 sm:space-x-3 p-2.5 sm:p-3 rounded-lg hover:bg-gray-50 active:bg-gray-100 cursor-pointer transition-colors border border-gray-100"
                 onClick={() => {
                   // In a real app, navigate to transaction details
                   // navigate(`/transaction/${transaction.id}`);
@@ -238,14 +254,37 @@ export default function TransactionHistory() {
                     </span>
                   </div>
 
-                  <div className="flex justify-between text-xs sm:text-sm mt-0.5">
+                  {/* Account ID and Transaction ID row */}
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                    {transaction.accountId && (
+                      <span className="text-[10px] sm:text-xs text-blue-600 font-mono bg-blue-50 px-1.5 py-0.5 rounded">
+                        {transaction.accountId}
+                      </span>
+                    )}
+                    {transaction.transactionId && (
+                      <span className="text-[10px] sm:text-xs text-gray-500 font-mono">
+                        TXN: {transaction.transactionId.slice(-8).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between text-xs sm:text-sm mt-1">
                     <p className="text-gray-500 truncate max-w-[140px] sm:max-w-[200px]">
-                      {transaction.description || "No description"}
+                      {transaction.recipientName || transaction.description || "No description"}
                     </p>
                     <span className="text-gray-400 text-[10px] sm:text-xs whitespace-nowrap">
                       {getFormattedTime(String(transaction.createdAt || transaction.timestamp || new Date()))}
                     </span>
                   </div>
+
+                  {/* Payment method badge */}
+                  {transaction.paymentMethod && (
+                    <div className="mt-1">
+                      <span className="text-[10px] sm:text-xs text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded capitalize">
+                        {transaction.paymentMethod.replace('_', ' ')}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

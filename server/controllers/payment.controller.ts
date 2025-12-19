@@ -41,6 +41,7 @@ export class PaymentController {
       // Create transaction
       const transaction = await TransactionModel.create({
         userId,
+        accountId: user.accountId,
         type: 'payment',
         amount,
         currency: 'INR',
@@ -115,6 +116,7 @@ export class PaymentController {
       // Create transaction
       const transaction = await TransactionModel.create({
         userId,
+        accountId: user.accountId,
         type: 'payment',
         amount,
         currency: 'INR',
@@ -178,9 +180,13 @@ export class PaymentController {
         metadata: { userId: userId.toString() },
       });
 
+      // Get user for accountId
+      const user = await UserModel.findById(userId);
+
       // Create transaction
       const transaction = await TransactionModel.create({
         userId,
+        accountId: user?.accountId,
         type: 'payment',
         amount,
         currency: 'INR',
@@ -248,9 +254,13 @@ export class PaymentController {
       // Add balance
       await UserModel.updateBalance(userId, amount);
 
+      // Get user for accountId
+      const user = await UserModel.findById(userId);
+
       // Create transaction
       const transaction = await TransactionModel.create({
         userId,
+        accountId: user?.accountId,
         type: 'add_money',
         amount,
         currency: 'INR',
@@ -260,7 +270,8 @@ export class PaymentController {
         stripePaymentId: stripePaymentId || undefined,
       });
 
-      const user = await UserModel.findById(userId);
+      // Re-fetch user for updated balance
+      const updatedUser = await UserModel.findById(userId);
 
       console.log(`[Payment] Added ₹${amount} to wallet for user ${userId}`);
 
@@ -268,7 +279,7 @@ export class PaymentController {
         success: true,
         message: 'Money added successfully',
         transaction,
-        newBalance: user?.balance,
+        newBalance: updatedUser?.balance,
       });
     } catch (error) {
       console.error('[Payment] Add money error:', error);
@@ -342,6 +353,7 @@ export class PaymentController {
       // Create sender transaction
       const senderTransaction = await TransactionModel.create({
         userId,
+        accountId: sender.accountId,
         type: 'transfer',
         amount,
         currency: 'INR',
@@ -365,6 +377,7 @@ export class PaymentController {
         // Create recipient transaction
         await TransactionModel.create({
           userId: recipient._id!,
+          accountId: recipient.accountId,
           type: 'add_money',
           amount,
           currency: 'INR',
@@ -438,6 +451,7 @@ export class PaymentController {
       // Create transaction
       const transaction = await TransactionModel.create({
         userId,
+        accountId: user.accountId,
         type: 'recharge',
         amount,
         currency: 'INR',

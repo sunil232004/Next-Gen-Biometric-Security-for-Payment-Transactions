@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 
 export interface IUser {
   _id?: ObjectId;
+  accountId: string; // Unique account identifier
   email: string;
   password: string;
   name: string;
@@ -19,6 +20,7 @@ export interface IUser {
 
 export interface IUserPublic {
   _id: string;
+  accountId: string;
   email: string;
   name: string;
   phone?: string;
@@ -34,6 +36,13 @@ export const USERS_COLLECTION = 'users';
 export class UserModel {
   private static get collection() {
     return getDb().collection<IUser>(USERS_COLLECTION);
+  }
+
+  // Generate unique Account ID (format: ACC-XXXXXXXX)
+  static generateAccountId(): string {
+    const timestamp = Date.now().toString(36).toUpperCase();
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `ACC-${timestamp}${random}`;
   }
 
   // Generate unique UPI ID
@@ -79,8 +88,10 @@ export class UserModel {
 
     const hashedPassword = await this.hashPassword(data.password);
     const upiId = this.generateUpiId(data.name);
+    const accountId = this.generateAccountId();
 
     const user: IUser = {
+      accountId,
       email: data.email.toLowerCase(),
       password: hashedPassword,
       name: data.name,
@@ -172,6 +183,7 @@ export class UserModel {
   static toPublic(user: IUser): IUserPublic {
     return {
       _id: user._id!.toString(),
+      accountId: user.accountId,
       email: user.email,
       name: user.name,
       phone: user.phone,
