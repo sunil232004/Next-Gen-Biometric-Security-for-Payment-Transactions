@@ -145,12 +145,14 @@ export default function PaymentHistoryPage() {
       case 'card':
         return <CreditCard className="h-5 w-5 text-purple-500" />;
       case 'bank_transfer':
-      case 'netbanking':
+      case 'net_banking':
         return <Building2 className="h-5 w-5 text-green-500" />;
       case 'biometric':
         return <Fingerprint className="h-5 w-5 text-cyan-500" />;
       case 'wallet':
         return <Wallet className="h-5 w-5 text-orange-500" />;
+      case 'cash':
+        return <Wallet className="h-5 w-5 text-green-600" />;
     }
     
     // Fallback to type-based icons

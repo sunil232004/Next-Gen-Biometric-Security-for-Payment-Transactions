@@ -21,16 +21,86 @@ const app = express();
 export let wss: any = null;
 let httpServer: any = null;
 
+// Store connected clients with their user IDs
+const connectedClients = new Map<string, Set<any>>();
+
+// Broadcast message to specific user
+export function broadcastToUser(userId: string, message: any) {
+  const clients = connectedClients.get(userId);
+  if (clients) {
+    const messageStr = JSON.stringify({
+      ...message,
+      timestamp: new Date().toISOString()
+    });
+    clients.forEach(client => {
+      if (client.readyState === 1) { // WebSocket.OPEN
+        client.send(messageStr);
+      }
+    });
+  }
+}
+
+// Broadcast to all connected clients
+export function broadcastToAll(message: any) {
+  const messageStr = JSON.stringify({
+    ...message,
+    timestamp: new Date().toISOString()
+  });
+  connectedClients.forEach((clients) => {
+    clients.forEach(client => {
+      if (client.readyState === 1) { // WebSocket.OPEN
+        client.send(messageStr);
+      }
+    });
+  });
+}
+
 if (!isVercel) {
   const http = await import('http');
   const { WebSocketServer } = await import('ws');
   httpServer = http.createServer(app);
   wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   
-  wss.on('connection', (ws: any) => {
-    log('Client connected');
+  wss.on('connection', (ws: any, req: any) => {
+    log('WebSocket client connected');
+    let clientUserId: string | null = null;
+    
+    ws.on('message', (data: string) => {
+      try {
+        const message = JSON.parse(data.toString());
+        
+        // Handle authentication message
+        if (message.type === 'auth' && message.userId) {
+          clientUserId = message.userId;
+          
+          // Add to connected clients map
+          if (!connectedClients.has(clientUserId)) {
+            connectedClients.set(clientUserId, new Set());
+          }
+          connectedClients.get(clientUserId)?.add(ws);
+          
+          log(`WebSocket authenticated for user: ${clientUserId}`);
+          ws.send(JSON.stringify({ type: 'auth_success', userId: clientUserId }));
+        }
+      } catch (e) {
+        log(`WebSocket message parse error: ${e}`);
+      }
+    });
+    
     ws.on('close', () => {
-      log('Client disconnected');
+      log('WebSocket client disconnected');
+      
+      // Remove from connected clients
+      if (clientUserId && connectedClients.has(clientUserId)) {
+        connectedClients.get(clientUserId)?.delete(ws);
+        if (connectedClients.get(clientUserId)?.size === 0) {
+          connectedClients.delete(clientUserId);
+        }
+      }
+    });
+    
+    ws.on('error', (error: any) => {
+      log(`WebSocket error: ${error}`);
     });
   });
 }

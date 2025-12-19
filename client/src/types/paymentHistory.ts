@@ -1,22 +1,38 @@
 // Payment History Types for Frontend
+// Aligned with UnifiedTransactionModel from backend
 
-// Payment Status Types
-export type PaymentStatus = 'initiated' | 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'refunded';
+// Payment Status Types (matches TransactionStatus)
+export type PaymentStatus = 
+  | 'pending' 
+  | 'processing' 
+  | 'completed' 
+  | 'failed' 
+  | 'cancelled' 
+  | 'refunded' 
+  | 'on_hold';
 
-// Payment Method Types
-export type PaymentMethod = 'upi' | 'card' | 'wallet' | 'bank_transfer' | 'netbanking' | 'biometric';
+// Payment Method Types (matches PaymentMethod)
+export type PaymentMethod = 
+  | 'upi' 
+  | 'card' 
+  | 'net_banking' 
+  | 'wallet' 
+  | 'biometric' 
+  | 'bank_transfer' 
+  | 'cash';
 
-// Payment Type Categories
+// Payment Type Categories (matches TransactionType)
 export type PaymentType = 
   | 'payment' 
   | 'transfer' 
+  | 'add_money' 
+  | 'withdrawal' 
   | 'recharge' 
   | 'bill_payment' 
   | 'refund' 
   | 'cashback' 
-  | 'add_money'
-  | 'withdrawal'
-  | 'merchant_payment';
+  | 'loan_disbursement' 
+  | 'loan_repayment';
 
 // Payment Direction - money in or out
 export type PaymentDirection = 'credit' | 'debit';
@@ -229,7 +245,8 @@ export function getPaymentTypeLabel(type: PaymentType): string {
     cashback: 'Cashback',
     add_money: 'Add Money',
     withdrawal: 'Withdrawal',
-    merchant_payment: 'Merchant Payment',
+    loan_disbursement: 'Loan Disbursement',
+    loan_repayment: 'Loan Repayment',
   };
   return labels[type] || type;
 }
@@ -237,13 +254,13 @@ export function getPaymentTypeLabel(type: PaymentType): string {
 // Helper function to get display text for payment status
 export function getPaymentStatusLabel(status: PaymentStatus): string {
   const labels: Record<PaymentStatus, string> = {
-    initiated: 'Initiated',
     pending: 'Pending',
     processing: 'Processing',
     completed: 'Completed',
     failed: 'Failed',
     cancelled: 'Cancelled',
     refunded: 'Refunded',
+    on_hold: 'On Hold',
   };
   return labels[status] || status;
 }
@@ -255,8 +272,9 @@ export function getPaymentMethodLabel(method: PaymentMethod): string {
     card: 'Card',
     wallet: 'Wallet',
     bank_transfer: 'Bank Transfer',
-    netbanking: 'Net Banking',
+    net_banking: 'Net Banking',
     biometric: 'Biometric',
+    cash: 'Cash',
   };
   return labels[method] || method;
 }
@@ -264,13 +282,13 @@ export function getPaymentMethodLabel(method: PaymentMethod): string {
 // Helper function to get status color
 export function getPaymentStatusColor(status: PaymentStatus): string {
   const colors: Record<PaymentStatus, string> = {
-    initiated: 'text-blue-500',
     pending: 'text-yellow-500',
     processing: 'text-orange-500',
     completed: 'text-green-500',
     failed: 'text-red-500',
     cancelled: 'text-gray-500',
     refunded: 'text-purple-500',
+    on_hold: 'text-blue-500',
   };
   return colors[status] || 'text-gray-500';
 }

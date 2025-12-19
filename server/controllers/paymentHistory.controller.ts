@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PaymentHistoryModel, PaymentType, PaymentStatus, PaymentMethod, PaymentDirection } from '../models/paymentHistory.model.js';
 import { ObjectId } from 'mongodb';
+import { broadcastToUser } from '../index.js';
 
 export class PaymentHistoryController {
   
@@ -34,20 +35,22 @@ export class PaymentHistoryController {
         endDate: endDate ? new Date(endDate as string) : undefined,
         minAmount: minAmount ? parseFloat(minAmount as string) : undefined,
         maxAmount: maxAmount ? parseFloat(maxAmount as string) : undefined,
-        sortBy: sortBy as 'createdAt' | 'amount' | 'completedAt',
+        sortBy: (sortBy === 'completedAt' ? 'updatedAt' : sortBy) as 'createdAt' | 'amount' | 'updatedAt',
         sortOrder: sortOrder as 'asc' | 'desc'
       };
 
       const result = await PaymentHistoryModel.findByUserId(userId, options);
+      const pageNum = parseInt(page as string);
+      const limitNum = parseInt(limit as string);
 
       res.json({
         success: true,
-        data: result.payments.map(PaymentHistoryModel.toPublic),
+        data: result.transactions.map(PaymentHistoryModel.toPublic),
         pagination: {
-          page: result.page,
-          limit: parseInt(limit as string),
+          page: pageNum,
+          limit: limitNum,
           total: result.total,
-          totalPages: result.totalPages
+          totalPages: Math.ceil(result.total / limitNum)
         }
       });
     } catch (error) {
@@ -326,6 +329,13 @@ export class PaymentHistoryController {
         initiatedAt: new Date()
       });
 
+      // Broadcast real-time update to user
+      broadcastToUser(userId.toString(), {
+        type: 'payment_update',
+        payload: PaymentHistoryModel.toPublic(payment),
+        action: 'created'
+      });
+
       res.status(201).json({
         success: true,
         data: PaymentHistoryModel.toPublic(payment),
@@ -366,7 +376,6 @@ export class PaymentHistoryController {
       const payment = await PaymentHistoryModel.updateStatus(id, status, {
         reason,
         updatedBy: userId.toString(),
-        completedAt: completedAt ? new Date(completedAt) : undefined,
         balanceAfter,
         errorDetails
       });
@@ -377,6 +386,14 @@ export class PaymentHistoryController {
           message: 'Failed to update payment status'
         });
       }
+
+      // Broadcast real-time update to user
+      broadcastToUser(userId.toString(), {
+        type: 'payment_update',
+        payload: PaymentHistoryModel.toPublic(payment),
+        action: 'updated',
+        newStatus: status
+      });
 
       res.json({
         success: true,

@@ -28,5 +28,9 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  // Enable SPA fallback for development - fixes page reload 404 issues
+  preview: {
+    port: 3001,
   }
 });

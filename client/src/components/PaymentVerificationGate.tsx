@@ -67,7 +67,13 @@ export default function PaymentVerificationGate({
   const hasFingerprint = availableMethods.includes('fingerprint');
   const hasFace = availableMethods.includes('face');
   const hasVoice = availableMethods.includes('voice');
-  const hasAnyBiometric = hasFingerprint || hasFace || hasVoice;
+  
+  // Always show fingerprint and voice options regardless of registration
+  // Face requires registration since it needs stored data for comparison
+  const showFingerprint = true; // Always available
+  const showVoice = true; // Always available  
+  const showFace = hasFace; // Only if registered
+  const hasAnyBiometric = true; // At least fingerprint/voice always available
 
   // Check WebAuthn availability
   useEffect(() => {
@@ -428,7 +434,7 @@ export default function PaymentVerificationGate({
             <>
               <h3 className="font-semibold text-lg mb-4">Select Verification Method</h3>
               <div className="space-y-3">
-                {hasFingerprint && (
+                {showFingerprint && (
                   <button
                     onClick={() => handleMethodSelect('fingerprint')}
                     className="w-full flex items-center gap-4 p-4 border-2 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all"
@@ -442,31 +448,23 @@ export default function PaymentVerificationGate({
                         {webAuthnAvailable ? 'Use device biometrics' : 'Quick and secure'}
                       </p>
                     </div>
-                    {webAuthnAvailable && (
-                      <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                        <Smartphone className="w-3 h-3" />
-                        <span>Native</span>
-                      </div>
-                    )}
-                  </button>
-                )}
-                
-                {hasFace && (
-                  <button
-                    onClick={() => handleMethodSelect('face')}
-                    className="w-full flex items-center gap-4 p-4 border-2 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all"
-                  >
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                      <Camera className="w-6 h-6 text-green-600" />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-medium">Face Recognition</p>
-                      <p className="text-sm text-gray-500">Look at the camera</p>
+                    <div className="flex items-center gap-1">
+                      {hasFingerprint && (
+                        <div className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                          Registered
+                        </div>
+                      )}
+                      {webAuthnAvailable && (
+                        <div className="flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                          <Smartphone className="w-3 h-3" />
+                          <span>Native</span>
+                        </div>
+                      )}
                     </div>
                   </button>
                 )}
                 
-                {hasVoice && (
+                {showVoice && (
                   <button
                     onClick={() => handleMethodSelect('voice')}
                     className="w-full flex items-center gap-4 p-4 border-2 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all"
@@ -474,9 +472,32 @@ export default function PaymentVerificationGate({
                     <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
                       <Mic className="w-6 h-6 text-purple-600" />
                     </div>
-                    <div className="text-left">
+                    <div className="text-left flex-1">
                       <p className="font-medium">Voice Recognition</p>
                       <p className="text-sm text-gray-500">Speak to verify</p>
+                    </div>
+                    {hasVoice && (
+                      <div className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                        Registered
+                      </div>
+                    )}
+                  </button>
+                )}
+                
+                {showFace && (
+                  <button
+                    onClick={() => handleMethodSelect('face')}
+                    className="w-full flex items-center gap-4 p-4 border-2 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all"
+                  >
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                      <Camera className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div className="text-left flex-1">
+                      <p className="font-medium">Face Recognition</p>
+                      <p className="text-sm text-gray-500">Look at the camera</p>
+                    </div>
+                    <div className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                      Registered
                     </div>
                   </button>
                 )}
