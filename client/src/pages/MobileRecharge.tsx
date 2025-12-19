@@ -157,6 +157,7 @@ export default function MobileRecharge() {
 
       // Invalidate transactions cache to refresh data
       queryClient.invalidateQueries({queryKey: ["/api/transactions"]});
+      queryClient.invalidateQueries({queryKey: ['payment-history']});
     } catch (error) {
       console.error("Recharge failed:", error);
       toast({

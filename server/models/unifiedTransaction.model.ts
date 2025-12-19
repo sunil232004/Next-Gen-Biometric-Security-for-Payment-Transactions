@@ -624,41 +624,72 @@ export class UnifiedTransactionModel {
 
   // ==================== UTILITY METHODS ====================
 
-  static toPublic(transaction: IUnifiedTransaction): Partial<IUnifiedTransaction> {
+  // Normalize legacy transactions to unified format
+  private static normalizeTransaction(transaction: any): IUnifiedTransaction {
+    // Determine direction for legacy transactions without it
+    let direction = transaction.direction;
+    if (!direction) {
+      const creditTypes = ['add_money', 'refund', 'cashback', 'loan_disbursement'];
+      direction = creditTypes.includes(transaction.type) ? 'credit' : 'debit';
+    }
+
+    // Generate transactionId for legacy transactions
+    const transactionId = transaction.transactionId || 
+      `TXN${transaction._id?.toString().slice(-12).toUpperCase() || Date.now().toString(36).toUpperCase()}`;
+
     return {
-      _id: transaction._id,
-      transactionId: transaction.transactionId,
-      userId: transaction.userId,
-      type: transaction.type,
-      direction: transaction.direction,
-      amount: transaction.amount,
-      currency: transaction.currency,
-      fee: transaction.fee,
-      tax: transaction.tax,
-      totalAmount: transaction.totalAmount,
-      status: transaction.status,
-      statusHistory: transaction.statusHistory,
-      description: transaction.description,
-      remarks: transaction.remarks,
-      category: transaction.category,
-      senderDetails: transaction.senderDetails,
-      receiverDetails: transaction.receiverDetails,
-      recipientId: transaction.recipientId,
-      recipientName: transaction.recipientName,
-      paymentMethod: transaction.paymentMethod,
-      paymentMethodDetails: transaction.paymentMethodDetails
+      ...transaction,
+      transactionId,
+      direction,
+      totalAmount: transaction.totalAmount || transaction.amount || 0,
+      statusHistory: transaction.statusHistory || [{
+        status: transaction.status,
+        timestamp: transaction.updatedAt || transaction.createdAt,
+        reason: 'Migrated from legacy'
+      }],
+      fee: transaction.fee || 0,
+      tax: transaction.tax || 0,
+    };
+  }
+
+  static toPublic(transaction: IUnifiedTransaction | any): Partial<IUnifiedTransaction> {
+    // Normalize legacy transactions first
+    const normalized = this.normalizeTransaction(transaction);
+    
+    return {
+      _id: normalized._id,
+      transactionId: normalized.transactionId,
+      userId: normalized.userId,
+      type: normalized.type,
+      direction: normalized.direction,
+      amount: normalized.amount,
+      currency: normalized.currency || 'INR',
+      fee: normalized.fee,
+      tax: normalized.tax,
+      totalAmount: normalized.totalAmount,
+      status: normalized.status,
+      statusHistory: normalized.statusHistory,
+      description: normalized.description,
+      remarks: normalized.remarks,
+      category: normalized.category,
+      senderDetails: normalized.senderDetails,
+      receiverDetails: normalized.receiverDetails,
+      recipientId: normalized.recipientId,
+      recipientName: normalized.recipientName,
+      paymentMethod: normalized.paymentMethod,
+      paymentMethodDetails: normalized.paymentMethodDetails
         ? {
-            ...transaction.paymentMethodDetails,
-            cardLast4: transaction.paymentMethodDetails.cardLast4,
+            ...normalized.paymentMethodDetails,
+            cardLast4: normalized.paymentMethodDetails.cardLast4,
           }
         : undefined,
-      biometricType: transaction.biometricType,
-      balanceBefore: transaction.balanceBefore,
-      balanceAfter: transaction.balanceAfter,
-      initiatedAt: transaction.initiatedAt,
-      completedAt: transaction.completedAt,
-      createdAt: transaction.createdAt,
-      updatedAt: transaction.updatedAt,
+      biometricType: normalized.biometricType,
+      balanceBefore: normalized.balanceBefore,
+      balanceAfter: normalized.balanceAfter,
+      initiatedAt: normalized.initiatedAt || normalized.createdAt,
+      completedAt: normalized.completedAt,
+      createdAt: normalized.createdAt,
+      updatedAt: normalized.updatedAt,
     };
   }
 

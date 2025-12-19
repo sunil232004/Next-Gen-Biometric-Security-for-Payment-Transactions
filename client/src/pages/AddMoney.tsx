@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from 'wouter';
 import { ChevronLeft, CreditCard as CreditCardIcon, Calendar, Lock, Check, Wallet } from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 
 export default function AddMoney() {
   const [location, navigate] = useLocation();
@@ -58,6 +58,11 @@ export default function AddMoney() {
 
       if (response.ok) {
         setIsSuccess(true);
+        
+        // Invalidate transaction caches
+        queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+        queryClient.invalidateQueries({ queryKey: ['payment-history'] });
+        
         toast({
           title: "Money Added Successfully",
           description: `₹${amount} has been added to your wallet`,

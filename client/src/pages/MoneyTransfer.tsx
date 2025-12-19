@@ -148,6 +148,7 @@ export default function MoneyTransfer() {
 
       // Invalidate transactions cache to refresh data
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ['payment-history'] });
 
       // Show receipt instead of the step 3 success screen
       setShowReceipt(true);

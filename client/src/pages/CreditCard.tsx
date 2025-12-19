@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from 'wouter';
 import { ChevronLeft, CreditCard as CreditCardIcon, Calendar, Lock, Check, DollarSign } from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 
 interface CardPaymentForm {
   cardNumber: string;
@@ -89,6 +89,11 @@ export default function CreditCard() {
       });
 
       setIsSuccess(true);
+      
+      // Invalidate transaction caches
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ['payment-history'] });
+      
       toast({
         title: "Payment Successful",
         description: `₹${formData.amount} has been paid towards your credit card bill`,

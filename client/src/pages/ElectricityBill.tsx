@@ -148,6 +148,7 @@ export default function ElectricityBill() {
 
       // Invalidate transactions cache to refresh data
       queryClient.invalidateQueries({queryKey: ["/api/transactions"]});
+      queryClient.invalidateQueries({queryKey: ['payment-history']});
       
       toast({
         title: "Bill Payment Successful!",

@@ -3,7 +3,7 @@ import QrReader from 'react-qr-scanner';
 import { useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { ChevronLeft, X, RefreshCw, QrCode, AtSign, Camera, ImageIcon, Image, Trash2 } from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/contexts/AuthContext';
 import PaymentVerificationGate from '@/components/PaymentVerificationGate';
 
@@ -176,6 +176,10 @@ export default function QRScanner() {
       
       // apiRequest returns parsed JSON or empty array on error
       if (response && response.success) {
+        // Invalidate transaction caches
+        queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+        queryClient.invalidateQueries({ queryKey: ['payment-history'] });
+        
         toast({
           title: "Payment Successful!",
           description: `You've paid ₹${amount} to ${paymentData?.name || paymentData?.upiId}`,
