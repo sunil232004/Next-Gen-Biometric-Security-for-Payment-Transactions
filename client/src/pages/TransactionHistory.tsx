@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { ChevronLeft, Clock, Search, ArrowDown, ArrowUp, Zap, ReceiptText, Filter } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { getApiUrl } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchTransactionsByUser } from "@/store/transactionsSlice";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,23 +18,6 @@ import {
 } from "@/components/ui/select";
 
 // Transaction type definition
-interface Transaction {
-  _id?: string;
-  id?: number;
-  userId: string;
-  accountId?: string;
-  transactionId?: string;
-  amount: number;
-  type: string;
-  direction?: string;
-  status: string;
-  description?: string;
-  serviceId?: number;
-  createdAt: string | Date;
-  timestamp?: string | Date;
-  recipientName?: string;
-  paymentMethod?: string;
-}
 
 export default function TransactionHistory() {
   const [_, navigate] = useLocation();
@@ -43,28 +26,18 @@ export default function TransactionHistory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
 
-  // Get user ID - support both MongoDB _id (string) and legacy numeric id
-  const userId = user?._id || '1';
+  const dispatch = useAppDispatch();
+  const transactionsState = useAppSelector((state) => state.transactions);
+  const transactions = transactionsState.items;
+  const isLoading = transactionsState.status === 'loading';
+  const fetchError = transactionsState.status === 'failed' ? transactionsState.error : null;
 
-  // Fetch transactions from unified API
-  const { data: transactions, isLoading, error } = useQuery({
-    queryKey: ['payment-history', userId],
-    queryFn: async () => {
-      const response = await fetch(getApiUrl(`/api/v2/payment-history?limit=100`), {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('paytm_auth_token')}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        throw new Error("Failed to fetch transactions");
-      }
-      const result = await response.json();
-      return result.data as Transaction[];
-    },
-    enabled: !!userId
-  });
+  const userId = user?._id;
+
+  useEffect(() => {
+    if (!userId) return;
+    dispatch(fetchTransactionsByUser({ limit: 100 }));
+  }, [dispatch, userId]);
 
   const handleBack = () => {
     navigate("/");
@@ -136,8 +109,13 @@ export default function TransactionHistory() {
   };
 
   // Filter transactions based on search term and filter type
-  const filteredTransactions = transactions 
-    ? transactions.filter(transaction => {
+  const sortedTransactions = [...transactions].sort((a, b) => {
+    const aTime = new Date(a.createdAt).getTime();
+    const bTime = new Date(b.createdAt).getTime();
+    return bTime - aTime;
+  });
+
+  const filteredTransactions = sortedTransactions.filter(transaction => {
         const matchesSearch = searchTerm 
           ? (transaction.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
              transaction.amount.toString().includes(searchTerm) ||
@@ -152,8 +130,7 @@ export default function TransactionHistory() {
           : transaction.type === filterType;
 
         return matchesSearch && matchesFilter;
-      })
-    : [];
+  });
 
   return (
     <div className="max-w-md md:max-w-lg lg:max-w-xl mx-auto h-screen bg-white shadow-lg flex flex-col">
@@ -212,10 +189,10 @@ export default function TransactionHistory() {
               </div>
             ))}
           </div>
-        ) : error ? (
+        ) : fetchError ? (
           <div className="text-center py-8 sm:py-10">
             <p className="text-red-500 text-sm sm:text-base">Failed to load transactions</p>
-            <Button onClick={() => window.location.reload()} className="mt-4 btn-responsive">
+            <Button onClick={() => dispatch(fetchTransactionsByUser({ limit: 100 }))} className="mt-4 btn-responsive">
               Try Again
             </Button>
           </div>

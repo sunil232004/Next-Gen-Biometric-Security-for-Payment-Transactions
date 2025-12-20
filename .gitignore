@@ -27,3 +27,4 @@ server/.env.local
 # Logs
 *.log
 log.txt
+error.txt

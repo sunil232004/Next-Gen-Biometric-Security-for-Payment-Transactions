@@ -46,6 +46,40 @@ export function PaymentForm({ amount, userId, clientSecret, paymentIntentId, onS
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
+    // Frontend validation for required fields
+    if (!cardNumber || cardNumber.replace(/\s/g, '').length !== 16) {
+      toast({
+        title: 'Invalid Card Number',
+        description: 'Please enter a valid 16-digit card number.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!expiry || !/^\d{2}\/\d{2}$/.test(expiry)) {
+      toast({
+        title: 'Invalid Expiry Date',
+        description: 'Please enter expiry in MM/YY format.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!cvc || cvc.length < 3) {
+      toast({
+        title: 'Invalid CVC',
+        description: 'Please enter a valid CVC (3 or 4 digits).',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!name || name.trim().length < 2) {
+      toast({
+        title: 'Cardholder Name Required',
+        description: 'Please enter the cardholder name.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
     try {

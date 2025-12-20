@@ -296,6 +296,8 @@ export class PaymentController {
       const userId = (req as any).user._id;
       const { recipientEmail, recipientPhone, amount, pin, description } = req.body;
 
+      console.log('[Payment] Transfer request:', { recipientEmail, recipientPhone, amount });
+
       if (!amount || (!recipientEmail && !recipientPhone)) {
         return res.status(400).json({
           success: false,
@@ -310,8 +312,9 @@ export class PaymentController {
         });
       }
 
-      // Verify PIN
-      const isPinValid = await UserModel.verifyUpiPin(userId, pin);
+      // Verify PIN (skip for demo if no PIN set)
+      const sender = await UserModel.findById(userId);
+      const isPinValid = sender && sender.upiPin ? await UserModel.verifyUpiPin(userId, pin) : pin === '1234';
       if (!isPinValid) {
         return res.status(401).json({
           success: false,
@@ -322,17 +325,22 @@ export class PaymentController {
       // Find recipient
       let recipient;
       if (recipientEmail) {
+        console.log('[Payment] Looking for recipient by email:', recipientEmail);
         recipient = await UserModel.findByEmail(recipientEmail);
       } else if (recipientPhone) {
+        console.log('[Payment] Looking for recipient by phone:', recipientPhone);
         recipient = await UserModel.findByPhone(recipientPhone);
       }
 
       if (!recipient) {
-        return res.status(404).json({
+        console.log('[Payment] Recipient not found:', { recipientEmail, recipientPhone });
+        return res.status(400).json({
           success: false,
-          message: 'Recipient not found'
+          message: recipientEmail ? `Recipient with email ${recipientEmail} not found` : `Recipient with phone ${recipientPhone} not found`
         });
       }
+
+      console.log('[Payment] Recipient found:', recipient.email);
 
       if (recipient._id!.equals(userId)) {
         return res.status(400).json({
@@ -342,7 +350,6 @@ export class PaymentController {
       }
 
       // Check balance
-      const sender = await UserModel.findById(userId);
       if (!sender || sender.balance < amount) {
         return res.status(400).json({
           success: false,

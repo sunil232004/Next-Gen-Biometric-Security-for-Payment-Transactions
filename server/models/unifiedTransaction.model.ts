@@ -675,10 +675,36 @@ export class UnifiedTransactionModel {
     // Normalize legacy transactions first
     const normalized = this.normalizeTransaction(transaction);
     
+    // Ensure dates are properly serialized to ISO strings
+    const serializeDate = (date: any): string => {
+      if (!date) return new Date().toISOString();
+      if (typeof date === 'string') return date;
+      if (date instanceof Date) return date.toISOString();
+      return new Date(date).toISOString();
+    };
+
+    const serializeStatusHistory = (history: any[]): any[] => {
+      if (!Array.isArray(history)) return [];
+      return history.map(entry => ({
+        status: entry.status || 'pending',
+        timestamp: serializeDate(entry.timestamp),
+        reason: entry.reason,
+        updatedBy: entry.updatedBy,
+      }));
+    };
+
+    // Serialize _id (could be ObjectId or string)
+    const serializeId = (id: any): string => {
+      if (!id) return '';
+      if (typeof id === 'string') return id;
+      if (id.toString) return id.toString();
+      return String(id);
+    };
+    
     return {
-      _id: normalized._id,
+      _id: serializeId(normalized._id),
       transactionId: normalized.transactionId,
-      userId: normalized.userId,
+      userId: normalized.userId?.toString?.() || String(normalized.userId),
       accountId: normalized.accountId,
       type: normalized.type,
       direction: normalized.direction,
@@ -688,7 +714,7 @@ export class UnifiedTransactionModel {
       tax: normalized.tax,
       totalAmount: normalized.totalAmount,
       status: normalized.status,
-      statusHistory: normalized.statusHistory,
+      statusHistory: serializeStatusHistory(normalized.statusHistory),
       description: normalized.description,
       remarks: normalized.remarks,
       category: normalized.category,
@@ -706,10 +732,10 @@ export class UnifiedTransactionModel {
       biometricType: normalized.biometricType,
       balanceBefore: normalized.balanceBefore,
       balanceAfter: normalized.balanceAfter,
-      initiatedAt: normalized.initiatedAt || normalized.createdAt,
-      completedAt: normalized.completedAt,
-      createdAt: normalized.createdAt,
-      updatedAt: normalized.updatedAt,
+      initiatedAt: serializeDate(normalized.initiatedAt || normalized.createdAt),
+      completedAt: normalized.completedAt ? serializeDate(normalized.completedAt) : undefined,
+      createdAt: serializeDate(normalized.createdAt),
+      updatedAt: serializeDate(normalized.updatedAt),
     };
   }
 

@@ -1,8 +1,6 @@
-import type { Express, Request, Response } from "express";
-import { createServer, type Server } from "http";
+import type { Express } from "express";
 import { z } from "zod";
-import { WebSocket } from 'ws';
-import { wss as globalWss, mongoStorage as legacyStorage } from './index.js';
+import { mongoStorage as legacyStorage } from './index.js';
 
 // Import new route modules
 import authRoutes from './routes/auth.routes.js';
@@ -36,23 +34,7 @@ if (process.env.STRIPE_SECRET_KEY) {
   stripe = createStripeInstance('sk_test_mock_default_key');
 }
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  const httpServer = createServer(app);
-  
-  // Attach WebSocket handlers
-  if (globalWss) {
-    globalWss.on('connection', (ws: WebSocket) => {
-      console.log('WebSocket client connected');
-
-      ws.on('message', (message: string) => {
-        console.log('WebSocket message received:', message);
-      });
-
-      ws.on('close', () => {
-        console.log('WebSocket client disconnected');
-      });
-    });
-  }
+export async function registerRoutes(app: Express): Promise<void> {
 
   // ============================================
   // NEW AUTHENTICATED API ROUTES (v2)
@@ -580,5 +562,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  return httpServer;
+  return;
 }
