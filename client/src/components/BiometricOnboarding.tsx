@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { 
-  Fingerprint, 
-  Camera, 
-  Mic, 
-  Check, 
-  ChevronRight, 
-  Shield, 
+import {
+  Fingerprint,
+  Camera,
+  Mic,
+  Check,
+  ChevronRight,
+  Shield,
   X,
   AlertCircle,
   ArrowLeft,
@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiRequest } from '@/lib/queryClient';
 import { useWebAuthn } from '@/hooks/use-webauthn';
+import { loadFaceApiModels, extractFaceEmbedding, embeddingToArray, detectFace } from '@/lib/faceApi';
 
 interface BiometricOnboardingProps {
   isOpen?: boolean;
@@ -29,25 +30,25 @@ interface BiometricOnboardingProps {
 type BiometricType = 'fingerprint' | 'face' | 'voice';
 type SetupStep = 'intro' | 'fingerprint' | 'face' | 'voice' | 'complete';
 
-export default function BiometricOnboarding({ 
-  isOpen = true, 
-  onComplete, 
-  onSkip 
+export default function BiometricOnboarding({
+  isOpen = true,
+  onComplete,
+  onSkip
 }: BiometricOnboardingProps) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { user, refreshUser } = useAuth();
-  
+
   // WebAuthn hook for fingerprint
-  const { 
-    isSupported: webAuthnSupported, 
+  const {
+    isSupported: webAuthnSupported,
     isPlatformAvailable,
     isLoading: webAuthnLoading,
     error: webAuthnError,
     registerFingerprint: registerWebAuthnFingerprint,
     checkCapabilities
   } = useWebAuthn();
-  
+
   const [currentStep, setCurrentStep] = useState<SetupStep>('intro');
   const [setupComplete, setSetupComplete] = useState<Record<BiometricType, boolean>>({
     fingerprint: false,
@@ -58,14 +59,16 @@ export default function BiometricOnboarding({
   const [error, setError] = useState<string | null>(null);
   const [webAuthnAvailable, setWebAuthnAvailable] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
-  
+  const [faceApiLoaded, setFaceApiLoaded] = useState(false);
+  const [faceDetected, setFaceDetected] = useState(false);
+
   // Camera and microphone refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  
+
   // Cleanup media streams
   const cleanupMediaStream = useCallback(() => {
     if (mediaStreamRef.current) {
@@ -144,7 +147,7 @@ export default function BiometricOnboarding({
       // Try WebAuthn first (real fingerprint hardware)
       if (webAuthnAvailable && isPlatformAvailable) {
         const result = await registerWebAuthnFingerprint('Fingerprint - Onboarding');
-        
+
         if (result.success) {
           setSetupComplete(prev => ({ ...prev, fingerprint: true }));
           toast({
@@ -177,10 +180,10 @@ export default function BiometricOnboarding({
   const handleFingerprintFallback = async () => {
     // Simulate fingerprint scan
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     // Generate fingerprint data (in production, this would come from actual sensor)
     const fingerprintData = `fp_${Date.now()}_${Math.random().toString(36).substr(2, 16)}`;
-    
+
     const success = await registerBiometric('fingerprint', fingerprintData);
     if (success) {
       toast({
@@ -201,7 +204,7 @@ export default function BiometricOnboarding({
         video: { facingMode: 'user', width: 640, height: 480 }
       });
       mediaStreamRef.current = stream;
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
@@ -215,7 +218,7 @@ export default function BiometricOnboarding({
   };
 
   const captureFace = async () => {
-    if (!videoRef.current || !canvasRef.current) {
+    if (!videoRef.current) {
       setError('Camera not ready');
       return;
     }
@@ -224,24 +227,42 @@ export default function BiometricOnboarding({
     setError(null);
 
     try {
-      const canvas = canvasRef.current;
-      const video = videoRef.current;
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) throw new Error('Canvas context not available');
-      
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0);
-      
-      // Get base64 image data
-      const faceData = canvas.toDataURL('image/jpeg', 0.8);
-      
+      // Load face-api.js models if not loaded
+      if (!faceApiLoaded) {
+        await loadFaceApiModels();
+        setFaceApiLoaded(true);
+      }
+
+      // Extract face embedding using face-api.js
+      const embedding = await extractFaceEmbedding(videoRef.current);
+
+      if (!embedding) {
+        throw new Error('No face detected. Please position your face in the frame.');
+      }
+
       cleanupMediaStream();
-      
-      const success = await registerBiometric('face', faceData);
-      if (success) {
+
+      // Register face embedding with backend
+      const embeddingArray = embeddingToArray(embedding);
+      const response = await apiRequest('/api/v2/face/register', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('paytm_auth_token')}`
+        },
+        body: {
+          embedding: embeddingArray
+        }
+      });
+
+      if (response.success) {
+        setSetupComplete(prev => ({ ...prev, face: true }));
+        toast({
+          title: 'Face Registered',
+          description: 'Your face has been successfully registered using ML recognition.'
+        });
         setTimeout(() => setCurrentStep('voice'), 500);
+      } else {
+        throw new Error(response.message || 'Face registration failed');
       }
     } catch (err: any) {
       setError(err.message || 'Face capture failed');
@@ -259,20 +280,20 @@ export default function BiometricOnboarding({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
-      
+
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
-      
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
-      
+
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const reader = new FileReader();
-        
+
         reader.onloadend = async () => {
           const voiceData = reader.result as string;
           const success = await registerBiometric('voice', voiceData);
@@ -281,13 +302,13 @@ export default function BiometricOnboarding({
           }
           setIsProcessing(false);
         };
-        
+
         reader.readAsDataURL(audioBlob);
         cleanupMediaStream();
       };
-      
+
       mediaRecorder.start();
-      
+
       // Record for 3 seconds
       setTimeout(() => {
         if (mediaRecorderRef.current?.state === 'recording') {
@@ -344,15 +365,15 @@ export default function BiometricOnboarding({
   const handleComplete = async () => {
     // Refresh user data to get updated biometrics
     await refreshUser();
-    
+
     // Mark setup as complete in localStorage
     localStorage.setItem('biometricOnboardingComplete', 'true');
-    
+
     toast({
       title: 'Setup Complete!',
       description: 'Your biometric security has been configured.'
     });
-    
+
     if (onComplete) {
       onComplete();
     } else {
@@ -362,12 +383,12 @@ export default function BiometricOnboarding({
 
   const handleSkipAll = () => {
     localStorage.setItem('biometricOnboardingSkipped', 'true');
-    
+
     toast({
       title: 'Setup Skipped',
       description: 'You can set up biometric security later in Profile Settings.'
     });
-    
+
     if (onSkip) {
       onSkip();
     } else {
@@ -384,13 +405,13 @@ export default function BiometricOnboarding({
       <Card className="w-full max-w-md relative overflow-hidden">
         {/* Progress indicator */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gray-200">
-          <div 
+          <div
             className="h-full bg-blue-500 transition-all duration-300"
-            style={{ 
-              width: currentStep === 'intro' ? '0%' : 
-                     currentStep === 'fingerprint' ? '25%' : 
-                     currentStep === 'face' ? '50%' : 
-                     currentStep === 'voice' ? '75%' : '100%' 
+            style={{
+              width: currentStep === 'intro' ? '0%' :
+                currentStep === 'fingerprint' ? '25%' :
+                  currentStep === 'face' ? '50%' :
+                    currentStep === 'voice' ? '75%' : '100%'
             }}
           />
         </div>
@@ -418,7 +439,7 @@ export default function BiometricOnboarding({
                     <p className="text-sm text-gray-500">Quick and secure</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                   <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                     <Camera className="w-5 h-5 text-green-600" />
@@ -428,7 +449,7 @@ export default function BiometricOnboarding({
                     <p className="text-sm text-gray-500">Just look at the camera</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                   <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
                     <Mic className="w-5 h-5 text-purple-600" />
@@ -441,7 +462,7 @@ export default function BiometricOnboarding({
               </div>
 
               <div className="pt-4 space-y-3">
-                <Button 
+                <Button
                   className="w-full"
                   size="lg"
                   onClick={handleNextStep}
@@ -449,8 +470,8 @@ export default function BiometricOnboarding({
                   Get Started
                   <ChevronRight className="ml-2 w-4 h-4" />
                 </Button>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   className="w-full text-gray-500"
                   onClick={handleSkipAll}
                 >
@@ -465,7 +486,7 @@ export default function BiometricOnboarding({
         {currentStep === 'fingerprint' && (
           <>
             <CardHeader className="text-center pt-8">
-              <button 
+              <button
                 onClick={() => setCurrentStep('intro')}
                 className="absolute left-4 top-6 p-2 hover:bg-gray-100 rounded-full"
               >
@@ -476,8 +497,8 @@ export default function BiometricOnboarding({
               </div>
               <CardTitle>Set Up Fingerprint</CardTitle>
               <CardDescription className="mt-2">
-                {webAuthnAvailable 
-                  ? 'Use your device\'s fingerprint sensor to register' 
+                {webAuthnAvailable
+                  ? 'Use your device\'s fingerprint sensor to register'
                   : 'Touch the fingerprint sensor to register'}
               </CardDescription>
               {webAuthnAvailable && (
@@ -496,11 +517,10 @@ export default function BiometricOnboarding({
               )}
 
               <div className="flex flex-col items-center py-8">
-                <div 
-                  className={`w-32 h-32 border-4 rounded-full flex items-center justify-center transition-all duration-300 ${
-                    isProcessing ? 'border-blue-500 animate-pulse' : 
-                    setupComplete.fingerprint ? 'border-green-500 bg-green-50' : 'border-gray-300'
-                  }`}
+                <div
+                  className={`w-32 h-32 border-4 rounded-full flex items-center justify-center transition-all duration-300 ${isProcessing ? 'border-blue-500 animate-pulse' :
+                      setupComplete.fingerprint ? 'border-green-500 bg-green-50' : 'border-gray-300'
+                    }`}
                 >
                   {setupComplete.fingerprint ? (
                     <Check className="w-16 h-16 text-green-500" />
@@ -511,14 +531,14 @@ export default function BiometricOnboarding({
                   )}
                 </div>
                 <p className="mt-4 text-sm text-gray-500">
-                  {isProcessing ? 'Scanning...' : 
-                   setupComplete.fingerprint ? 'Fingerprint registered!' : 
-                   'Place your finger on the sensor'}
+                  {isProcessing ? 'Scanning...' :
+                    setupComplete.fingerprint ? 'Fingerprint registered!' :
+                      'Place your finger on the sensor'}
                 </p>
               </div>
 
               <div className="space-y-3">
-                <Button 
+                <Button
                   className="w-full"
                   size="lg"
                   onClick={handleNextStep}
@@ -538,8 +558,8 @@ export default function BiometricOnboarding({
                     'Scan Fingerprint'
                   )}
                 </Button>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   className="w-full text-gray-500"
                   onClick={handleSkipCurrent}
                   disabled={isProcessing}
@@ -555,7 +575,7 @@ export default function BiometricOnboarding({
         {currentStep === 'face' && (
           <>
             <CardHeader className="text-center pt-8">
-              <button 
+              <button
                 onClick={() => {
                   cleanupMediaStream();
                   setCurrentStep('fingerprint');
@@ -585,7 +605,7 @@ export default function BiometricOnboarding({
                     </div>
                   ) : (
                     <>
-                      <video 
+                      <video
                         ref={videoRef}
                         className="w-full h-full object-cover"
                         autoPlay
@@ -602,15 +622,15 @@ export default function BiometricOnboarding({
                 </div>
                 <canvas ref={canvasRef} className="hidden" />
                 <p className="mt-4 text-sm text-gray-500">
-                  {isProcessing ? 'Processing...' : 
-                   setupComplete.face ? 'Face registered!' : 
-                   cameraReady ? 'Position your face and click Capture' : 
-                   'Click Start Camera to begin'}
+                  {isProcessing ? 'Processing...' :
+                    setupComplete.face ? 'Face registered!' :
+                      cameraReady ? 'Position your face and click Capture' :
+                        'Click Start Camera to begin'}
                 </p>
               </div>
 
               <div className="space-y-3">
-                <Button 
+                <Button
                   className="w-full"
                   size="lg"
                   onClick={handleNextStep}
@@ -632,8 +652,8 @@ export default function BiometricOnboarding({
                     'Start Camera'
                   )}
                 </Button>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   className="w-full text-gray-500"
                   onClick={handleSkipCurrent}
                   disabled={isProcessing}
@@ -649,7 +669,7 @@ export default function BiometricOnboarding({
         {currentStep === 'voice' && (
           <>
             <CardHeader className="text-center pt-8">
-              <button 
+              <button
                 onClick={() => setCurrentStep('face')}
                 className="absolute left-4 top-6 p-2 hover:bg-gray-100 rounded-full"
               >
@@ -669,21 +689,20 @@ export default function BiometricOnboarding({
               )}
 
               <div className="flex flex-col items-center py-8">
-                <div 
-                  className={`w-32 h-32 border-4 rounded-full flex items-center justify-center transition-all duration-300 ${
-                    isProcessing ? 'border-purple-500 animate-pulse' : 
-                    setupComplete.voice ? 'border-green-500 bg-green-50' : 'border-gray-300'
-                  }`}
+                <div
+                  className={`w-32 h-32 border-4 rounded-full flex items-center justify-center transition-all duration-300 ${isProcessing ? 'border-purple-500 animate-pulse' :
+                      setupComplete.voice ? 'border-green-500 bg-green-50' : 'border-gray-300'
+                    }`}
                 >
                   {setupComplete.voice ? (
                     <Check className="w-16 h-16 text-green-500" />
                   ) : isProcessing ? (
                     <div className="flex items-center gap-1">
                       {[1, 2, 3, 4, 5].map((i) => (
-                        <div 
+                        <div
                           key={i}
                           className="w-2 bg-purple-500 rounded-full animate-pulse"
-                          style={{ 
+                          style={{
                             height: `${20 + Math.random() * 30}px`,
                             animationDelay: `${i * 0.1}s`
                           }}
@@ -695,9 +714,9 @@ export default function BiometricOnboarding({
                   )}
                 </div>
                 <p className="mt-4 text-sm text-gray-500">
-                  {isProcessing ? 'Recording... Speak now!' : 
-                   setupComplete.voice ? 'Voice registered!' : 
-                   'Click to start recording'}
+                  {isProcessing ? 'Recording... Speak now!' :
+                    setupComplete.voice ? 'Voice registered!' :
+                      'Click to start recording'}
                 </p>
                 {!isProcessing && !setupComplete.voice && (
                   <p className="mt-2 text-xs text-gray-400 text-center">
@@ -707,7 +726,7 @@ export default function BiometricOnboarding({
               </div>
 
               <div className="space-y-3">
-                <Button 
+                <Button
                   className="w-full"
                   size="lg"
                   onClick={handleNextStep}
@@ -727,8 +746,8 @@ export default function BiometricOnboarding({
                     'Start Recording'
                   )}
                 </Button>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   className="w-full text-gray-500"
                   onClick={handleSkipCurrent}
                   disabled={isProcessing}
@@ -754,12 +773,10 @@ export default function BiometricOnboarding({
             </CardHeader>
             <CardContent className="space-y-4 pb-8">
               <div className="space-y-3">
-                <div className={`flex items-center gap-3 p-3 rounded-lg ${
-                  setupComplete.fingerprint ? 'bg-green-50' : 'bg-gray-50'
-                }`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    setupComplete.fingerprint ? 'bg-green-100' : 'bg-gray-100'
+                <div className={`flex items-center gap-3 p-3 rounded-lg ${setupComplete.fingerprint ? 'bg-green-50' : 'bg-gray-50'
                   }`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${setupComplete.fingerprint ? 'bg-green-100' : 'bg-gray-100'
+                    }`}>
                     {setupComplete.fingerprint ? (
                       <Check className="w-5 h-5 text-green-600" />
                     ) : (
@@ -773,13 +790,11 @@ export default function BiometricOnboarding({
                     </p>
                   </div>
                 </div>
-                
-                <div className={`flex items-center gap-3 p-3 rounded-lg ${
-                  setupComplete.face ? 'bg-green-50' : 'bg-gray-50'
-                }`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    setupComplete.face ? 'bg-green-100' : 'bg-gray-100'
+
+                <div className={`flex items-center gap-3 p-3 rounded-lg ${setupComplete.face ? 'bg-green-50' : 'bg-gray-50'
                   }`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${setupComplete.face ? 'bg-green-100' : 'bg-gray-100'
+                    }`}>
                     {setupComplete.face ? (
                       <Check className="w-5 h-5 text-green-600" />
                     ) : (
@@ -793,13 +808,11 @@ export default function BiometricOnboarding({
                     </p>
                   </div>
                 </div>
-                
-                <div className={`flex items-center gap-3 p-3 rounded-lg ${
-                  setupComplete.voice ? 'bg-green-50' : 'bg-gray-50'
-                }`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    setupComplete.voice ? 'bg-green-100' : 'bg-gray-100'
+
+                <div className={`flex items-center gap-3 p-3 rounded-lg ${setupComplete.voice ? 'bg-green-50' : 'bg-gray-50'
                   }`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${setupComplete.voice ? 'bg-green-100' : 'bg-gray-100'
+                    }`}>
                     {setupComplete.voice ? (
                       <Check className="w-5 h-5 text-green-600" />
                     ) : (
@@ -816,7 +829,7 @@ export default function BiometricOnboarding({
               </div>
 
               <div className="pt-4">
-                <Button 
+                <Button
                   className="w-full"
                   size="lg"
                   onClick={handleComplete}
@@ -825,7 +838,7 @@ export default function BiometricOnboarding({
                   <ChevronRight className="ml-2 w-4 h-4" />
                 </Button>
               </div>
-              
+
               {completedCount < 3 && (
                 <p className="text-xs text-center text-gray-500">
                   You can add more biometric methods in Profile Settings

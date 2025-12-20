@@ -14,6 +14,7 @@ export interface IUser {
   balance: number;
   profileImage?: string;
   isVerified: boolean;
+  faceEmbedding?: number[]; // 128-D face descriptor from face-api.js
   createdAt: Date;
   updatedAt: Date;
 }
@@ -133,12 +134,12 @@ export class UserModel {
   static async update(id: string | ObjectId, data: Partial<IUser>): Promise<IUser | null> {
     const objectId = typeof id === 'string' ? new ObjectId(id) : id;
     data.updatedAt = new Date();
-    
+
     await this.collection.updateOne(
       { _id: objectId },
       { $set: data }
     );
-    
+
     return this.findById(objectId);
   }
 
@@ -147,7 +148,7 @@ export class UserModel {
     const objectId = typeof id === 'string' ? new ObjectId(id) : id;
     const result = await this.collection.updateOne(
       { _id: objectId },
-      { 
+      {
         $inc: { balance: amount },
         $set: { updatedAt: new Date() }
       }
@@ -159,11 +160,11 @@ export class UserModel {
   static async setUpiPin(id: string | ObjectId, pin: string): Promise<boolean> {
     const objectId = typeof id === 'string' ? new ObjectId(id) : id;
     const hashedPin = await this.hashUpiPin(pin);
-    
+
     const result = await this.collection.updateOne(
       { _id: objectId },
-      { 
-        $set: { 
+      {
+        $set: {
           upiPin: hashedPin,
           updatedAt: new Date()
         }
