@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import { getApiUrl } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { setSelectedTransaction, setTransactions } from "@/store/transactionsSlice";
 import { 
   PaymentHistory, 
   PaymentHistoryListResponse,
@@ -71,9 +73,10 @@ import {
 export default function PaymentHistoryPage() {
   const [_, navigate] = useLocation();
   const { user, token } = useAuth();
+  const dispatch = useAppDispatch();
+  const selectedPayment = useAppSelector((state) => state.transactions.selectedTransaction);
   
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedPayment, setSelectedPayment] = useState<PaymentHistory | null>(null);
   const [filters, setFilters] = useState<PaymentHistoryFilters>({
     page: 1,
     limit: 20,
@@ -108,6 +111,12 @@ export default function PaymentHistoryPage() {
     },
     enabled: !!user && !!token
   });
+
+  useEffect(() => {
+    if (data?.data) {
+      dispatch(setTransactions(data.data));
+    }
+  }, [data, dispatch]);
 
   const handleBack = () => navigate("/");
 
@@ -496,7 +505,7 @@ export default function PaymentHistoryPage() {
             {filteredPayments.map((payment) => (
               <div
                 key={payment._id}
-                onClick={() => setSelectedPayment(payment)}
+                onClick={() => dispatch(setSelectedTransaction(payment))}
                 className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-[0.98]"
               >
                 <div className="flex items-start gap-3">
@@ -572,7 +581,7 @@ export default function PaymentHistoryPage() {
       </main>
 
       {/* Payment Detail Dialog */}
-      <Dialog open={!!selectedPayment} onOpenChange={() => setSelectedPayment(null)}>
+      <Dialog open={!!selectedPayment} onOpenChange={() => dispatch(setSelectedTransaction(null))}>
         <DialogContent className="max-w-md mx-auto">
           <DialogHeader>
             <DialogTitle>Payment Details</DialogTitle>

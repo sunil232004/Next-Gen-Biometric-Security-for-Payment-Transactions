@@ -87,6 +87,7 @@ export interface PaymentHistory {
   initiatedAt: string;
   completedAt?: string;
   createdAt: string;
+  metadata?: Record<string, any>;
 }
 
 // Pagination Info

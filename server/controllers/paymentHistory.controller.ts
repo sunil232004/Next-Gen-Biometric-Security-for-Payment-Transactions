@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { PaymentHistoryModel, PaymentType, PaymentStatus, PaymentMethod, PaymentDirection } from '../models/paymentHistory.model.js';
 import { ObjectId } from 'mongodb';
-import { broadcastToUser } from '../index.js';
 
 export class PaymentHistoryController {
   
@@ -45,7 +44,7 @@ export class PaymentHistoryController {
 
       res.json({
         success: true,
-        data: result.transactions.map(PaymentHistoryModel.toPublic),
+        data: result.transactions.map((tx) => PaymentHistoryModel.toPublic(tx)),
         pagination: {
           page: pageNum,
           limit: limitNum,
@@ -151,7 +150,7 @@ export class PaymentHistoryController {
 
       res.json({
         success: true,
-        data: payments.map(PaymentHistoryModel.toPublic)
+        data: payments.map((tx) => PaymentHistoryModel.toPublic(tx))
       });
     } catch (error) {
       console.error('[PaymentHistory] Get recent error:', error);
@@ -233,7 +232,7 @@ export class PaymentHistoryController {
 
       res.json({
         success: true,
-        data: payments.map(PaymentHistoryModel.toPublic),
+        data: payments.map((tx) => PaymentHistoryModel.toPublic(tx)),
         count: payments.length
       });
     } catch (error) {
@@ -329,13 +328,6 @@ export class PaymentHistoryController {
         initiatedAt: new Date()
       });
 
-      // Broadcast real-time update to user
-      broadcastToUser(userId.toString(), {
-        type: 'payment_update',
-        payload: PaymentHistoryModel.toPublic(payment),
-        action: 'created'
-      });
-
       res.status(201).json({
         success: true,
         data: PaymentHistoryModel.toPublic(payment),
@@ -386,14 +378,6 @@ export class PaymentHistoryController {
           message: 'Failed to update payment status'
         });
       }
-
-      // Broadcast real-time update to user
-      broadcastToUser(userId.toString(), {
-        type: 'payment_update',
-        payload: PaymentHistoryModel.toPublic(payment),
-        action: 'updated',
-        newStatus: status
-      });
 
       res.json({
         success: true,

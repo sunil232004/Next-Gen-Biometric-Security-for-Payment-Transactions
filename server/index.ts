@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
-import cors from "cors";
+import http from "http";
 import { registerRoutes } from "./routes.js";
 import { connectToDatabase, createCollections, closeConnection } from "./mongodb.js";
 import { MongoDBStorage } from "./mongodbStorage.js";
@@ -16,96 +16,7 @@ function log(message: string, source = 'server') {
 export const mongoStorage = new MongoDBStorage();
 
 const app = express();
-
-// WebSocket server - only create in non-serverless environment
-export let wss: any = null;
-let httpServer: any = null;
-
-// Store connected clients with their user IDs
-const connectedClients = new Map<string, Set<any>>();
-
-// Broadcast message to specific user
-export function broadcastToUser(userId: string, message: any) {
-  const clients = connectedClients.get(userId);
-  if (clients) {
-    const messageStr = JSON.stringify({
-      ...message,
-      timestamp: new Date().toISOString()
-    });
-    clients.forEach(client => {
-      if (client.readyState === 1) { // WebSocket.OPEN
-        client.send(messageStr);
-      }
-    });
-  }
-}
-
-// Broadcast to all connected clients
-export function broadcastToAll(message: any) {
-  const messageStr = JSON.stringify({
-    ...message,
-    timestamp: new Date().toISOString()
-  });
-  connectedClients.forEach((clients) => {
-    clients.forEach(client => {
-      if (client.readyState === 1) { // WebSocket.OPEN
-        client.send(messageStr);
-      }
-    });
-  });
-}
-
-if (!isVercel) {
-  const http = await import('http');
-  const { WebSocketServer } = await import('ws');
-  httpServer = http.createServer(app);
-  wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-  
-  wss.on('connection', (ws: any, req: any) => {
-    log('WebSocket client connected');
-    let clientUserId: string | null = null;
-    
-    ws.on('message', (data: string) => {
-      try {
-        const message = JSON.parse(data.toString());
-        
-        // Handle authentication message
-        if (message.type === 'auth' && message.userId) {
-          clientUserId = message.userId;
-          
-          // Add to connected clients map
-          if (clientUserId) {
-            if (!connectedClients.has(clientUserId)) {
-              connectedClients.set(clientUserId, new Set());
-            }
-            connectedClients.get(clientUserId)?.add(ws);
-          }
-          
-          log(`WebSocket authenticated for user: ${clientUserId}`);
-          ws.send(JSON.stringify({ type: 'auth_success', userId: clientUserId }));
-        }
-      } catch (e) {
-        log(`WebSocket message parse error: ${e}`);
-      }
-    });
-    
-    ws.on('close', () => {
-      log('WebSocket client disconnected');
-      
-      // Remove from connected clients
-      if (clientUserId && connectedClients.has(clientUserId)) {
-        connectedClients.get(clientUserId)?.delete(ws);
-        if (connectedClients.get(clientUserId)?.size === 0) {
-          connectedClients.delete(clientUserId);
-        }
-      }
-    });
-    
-    ws.on('error', (error: any) => {
-      log(`WebSocket error: ${error}`);
-    });
-  });
-}
+const httpServer = !isVercel ? http.createServer(app) : null;
 
 // CORS configuration - Handle preflight and all requests
 const allowedOrigins = [
@@ -203,7 +114,15 @@ app.use((req, res, next) => {
 // Graceful shutdown function (for local dev)
 function gracefulShutdown() {
   log('Shutting down...', 'mongodb');
-  closeConnection().then(() => process.exit(0)).catch(() => process.exit(1));
+  closeConnection()
+    .then(() => {
+      if (httpServer) {
+        httpServer.close(() => process.exit(0));
+      } else {
+        process.exit(0);
+      }
+    })
+    .catch(() => process.exit(1));
 }
 
 if (!isVercel) {
@@ -277,13 +196,49 @@ export default async function handler(req: Request, res: Response) {
 
 // For local development
 if (!isVercel && httpServer) {
-  initializeApp().then(() => {
-    const port = process.env.PORT || 5000;
-    httpServer.listen(port, () => {
-      log(`Server running at http://localhost:${port}`);
+  initializeApp().then(async () => {
+    const basePort = parseInt(process.env.PORT || '5000', 10);
+    const maxTries = 10;
+    let currentPort = basePort;
+
+    // Attach error handlers to avoid unhandled 'error' events
+    httpServer.on('error', (err: any) => {
+      log(`HTTP server error: ${err?.message || err}`, 'server');
     });
+    // Try binding to a free port, incrementing if in use
+    for (let attempt = 0; attempt < maxTries; attempt++) {
+      try {
+        await new Promise<void>((resolve, reject) => {
+          // Use once so we don't leak listeners across attempts
+          const onError = (err: any) => {
+            httpServer.off('listening', onListening);
+            reject(err);
+          };
+          const onListening = () => {
+            httpServer.off('error', onError);
+            resolve();
+          };
+          httpServer.once('error', onError);
+          httpServer.once('listening', onListening);
+          httpServer.listen(currentPort);
+        });
+
+        log(`Server running at http://localhost:${currentPort}`);
+        break; // success
+      } catch (err: any) {
+        if (err && err.code === 'EADDRINUSE') {
+          log(`Port ${currentPort} in use, trying ${currentPort + 1}`, 'server');
+          currentPort += 1;
+          // Wait briefly before retrying
+          await new Promise((r) => setTimeout(r, 200));
+          continue;
+        }
+        log(`Failed to start: ${err}`, 'server');
+        process.exit(1);
+      }
+    }
   }).catch(err => {
-    log(`Failed to start: ${err}`, 'server');
+    log(`Failed to initialize app: ${err}`, 'server');
     process.exit(1);
   });
 }

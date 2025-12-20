@@ -5,20 +5,24 @@
  * All exports from this file now re-export from the unified model.
  */
 
-// Re-export everything from unified model with legacy names for backward compatibility
+// Re-export runtime values from unified model with legacy names for backward compatibility
 export {
   UnifiedTransactionModel as PaymentHistoryModel,
-  IUnifiedTransaction as IPaymentHistory,
   TransactionType as PaymentType,
   TransactionStatus as PaymentStatus,
   PaymentMethod,
   TransactionDirection as PaymentDirection,
-  type IPaymentMethodDetails,
-  type IPartyDetails,
-  type IStatusHistoryEntry,
-  type ITransactionFilterOptions as IPaymentHistoryFilterOptions,
-  type ITransactionStatistics as IPaymentStatistics,
-  type IMonthlySummary,
+} from './unifiedTransaction.model.js';
+
+// Re-export types only (ensures no runtime import of erased TS types)
+export type {
+  IUnifiedTransaction as IPaymentHistory,
+  IPaymentMethodDetails,
+  IPartyDetails,
+  IStatusHistoryEntry,
+  ITransactionFilterOptions as IPaymentHistoryFilterOptions,
+  ITransactionStatistics as IPaymentStatistics,
+  IMonthlySummary,
 } from './unifiedTransaction.model.js';
 
 // Public version without sensitive data (legacy compatibility)

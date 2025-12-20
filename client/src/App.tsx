@@ -3,7 +3,6 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { useDataSync } from "./hooks/use-realtime-sync";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
@@ -31,17 +30,6 @@ import SecurityCredentials from "@/pages/SecurityCredentials";
 import PaymentHistoryPage from "@/pages/PaymentHistoryPage";
 import { Loader2 } from "lucide-react";
 
-// Component to handle real-time data synchronization
-function RealtimeSyncProvider({ children }: { children: React.ReactNode }) {
-  // Initialize real-time sync with WebSocket and polling fallback
-  useDataSync({
-    enabled: true,
-    pollingInterval: 15000 // Poll every 15 seconds as fallback
-  });
-  
-  return <>{children}</>;
-}
-
 // Protected route wrapper
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -58,11 +46,7 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
     return <Redirect to="/login" />;
   }
 
-  return (
-    <RealtimeSyncProvider>
-      <Component />
-    </RealtimeSyncProvider>
-  );
+  return <Component />;
 }
 
 function Router() {
