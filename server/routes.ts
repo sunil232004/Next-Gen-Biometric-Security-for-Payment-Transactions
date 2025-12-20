@@ -8,15 +8,17 @@ import biometricRoutes from './routes/biometric.routes.js';
 import transactionRoutes from './routes/transaction.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
 import paymentHistoryRoutes from './routes/paymentHistory.routes.js';
+import faceRoutes from './routes/face.routes.js';
+import voiceRoutes from './routes/voice.routes.js';
 
 // Import for mock Stripe
 import { createStripeInstance, MockStripe } from "./services/stripe.js";
 
 // Import legacy schemas for backward compatibility
-import { 
-  insertUserSchema, 
-  insertTransactionSchema, 
-  insertBiometricAuthSchema 
+import {
+  insertUserSchema,
+  insertTransactionSchema,
+  insertBiometricAuthSchema
 } from "./schema.js";
 
 // Initialize mock Stripe
@@ -39,21 +41,27 @@ export async function registerRoutes(app: Express): Promise<void> {
   // ============================================
   // NEW AUTHENTICATED API ROUTES (v2)
   // ============================================
-  
+
   // Auth routes: /api/v2/auth/*
   app.use('/api/v2/auth', authRoutes);
-  
+
   // Biometric routes: /api/v2/biometric/*
   app.use('/api/v2/biometric', biometricRoutes);
-  
+
   // Transaction routes: /api/v2/transactions/*
   app.use('/api/v2/transactions', transactionRoutes);
-  
+
   // Payment routes: /api/v2/payments/*
   app.use('/api/v2/payments', paymentRoutes);
 
   // Payment History routes: /api/v2/payment-history/*
   app.use('/api/v2/payment-history', paymentHistoryRoutes);
+
+  // Face recognition routes: /api/v2/face/*
+  app.use('/api/v2/face', faceRoutes);
+
+  // Voice command routes: /api/v2/voice/*
+  app.use('/api/v2/voice', voiceRoutes);
 
   // ============================================
   // LEGACY API ROUTES (v1 - backward compatibility)
@@ -63,7 +71,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get("/api/services", async (req, res) => {
     try {
       const category = req.query.category as string | undefined;
-      
+
       if (category) {
         const services = await legacyStorage.getServicesByCategory(category);
         return res.json(services);
@@ -96,7 +104,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });
-  
+
   // Legacy: Update user profile image
   app.post("/api/user/:id/profile-image", async (req, res) => {
     try {
@@ -104,17 +112,17 @@ export async function registerRoutes(app: Express): Promise<void> {
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid user ID" });
       }
-      
+
       const { profileImage } = req.body;
       if (!profileImage) {
         return res.status(400).json({ message: "Profile image is required" });
       }
-      
+
       const user = await legacyStorage.getUser(id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       const updatedUser = await legacyStorage.updateUserProfileImage(id, profileImage);
       return res.json(updatedUser);
     } catch (error) {
@@ -128,7 +136,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const userData = insertUserSchema.parse(req.body);
       const existingUser = await legacyStorage.getUserByUsername(userData.username);
-      
+
       if (existingUser) {
         return res.status(409).json({ message: "Username already exists" });
       }
@@ -137,12 +145,12 @@ export async function registerRoutes(app: Express): Promise<void> {
       return res.status(201).json(user);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: "Invalid user data", 
-          errors: error.errors 
+        return res.status(400).json({
+          message: "Invalid user data",
+          errors: error.errors
         });
       }
-      
+
       console.error("Error creating user:", error);
       res.status(500).json({ message: "Failed to create user" });
     }
@@ -222,30 +230,30 @@ export async function registerRoutes(app: Express): Promise<void> {
       const schema = insertBiometricAuthSchema.extend({
         data: z.string().min(10),
       });
-      
+
       const parsedData = schema.parse(req.body);
       const createdAt: string = req.body.createdAt || new Date().toISOString();
-      
+
       const biometricData = {
         ...parsedData,
         createdAt
       };
-      
+
       const user = await legacyStorage.getUser(biometricData.userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       const biometric = await legacyStorage.createBiometricAuth(biometricData);
       return res.status(201).json(biometric);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: "Invalid biometric data", 
-          errors: error.errors 
+        return res.status(400).json({
+          message: "Invalid biometric data",
+          errors: error.errors
         });
       }
-      
+
       console.error("Error registering biometric method:", error);
       res.status(500).json({ message: "Failed to register biometric method" });
     }
@@ -303,7 +311,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.post("/api/create-payment-intent", async (req, res) => {
     try {
       const { amount, currency = 'inr' } = req.body;
-      
+
       if (!amount || isNaN(Number(amount))) {
         return res.status(400).json({
           success: false,
@@ -341,7 +349,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.post("/api/process-payment", async (req, res) => {
     try {
       const { paymentIntentId, userId, amount, description } = req.body;
-      
+
       console.log('[Payment] Processing:', { paymentIntentId, userId, amount });
 
       if (!paymentIntentId) {
@@ -360,7 +368,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
       // Confirm the payment
       const paymentIntent = await stripe.paymentIntents.confirm(paymentIntentId);
-      
+
       if (paymentIntent.status === 'succeeded') {
         // Create transaction record
         if (userId && amount) {
@@ -400,7 +408,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get("/api/payment-status/:paymentIntentId", async (req, res) => {
     try {
       const { paymentIntentId } = req.params;
-      
+
       if (!stripe) {
         return res.status(500).json({
           success: false,
@@ -409,7 +417,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
 
       const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-      
+
       return res.json({
         success: true,
         status: paymentIntent?.status,

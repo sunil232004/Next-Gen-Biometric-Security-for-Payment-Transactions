@@ -55,7 +55,7 @@ export class PaymentController {
       try {
         // Deduct balance
         await UserModel.updateBalance(userId, -amount);
-        
+
         // Update transaction status
         await TransactionModel.updateStatus(transaction._id!.toString(), 'completed');
 
@@ -131,7 +131,7 @@ export class PaymentController {
       try {
         // Deduct balance
         await UserModel.updateBalance(userId, -amount);
-        
+
         // Update transaction status
         await TransactionModel.updateStatus(transaction._id!.toString(), 'completed');
 
@@ -357,39 +357,43 @@ export class PaymentController {
         });
       }
 
-      // Create sender transaction
+      // Create sender transaction (debit - money sent)
       const senderTransaction = await TransactionModel.create({
         userId,
         accountId: sender.accountId,
         type: 'transfer',
+        direction: 'debit', // Explicitly set to debit for money sent
         amount,
         currency: 'INR',
         status: 'processing',
         description: description || `Transfer to ${recipient.name}`,
         recipientId: recipient._id!.toString(),
         recipientName: recipient.name,
+        receiverDetails: { name: recipient.name, upiId: recipient.upiId },
         paymentMethod: 'wallet',
       });
 
       try {
         // Deduct from sender
         await UserModel.updateBalance(userId, -amount);
-        
+
         // Add to recipient
         await UserModel.updateBalance(recipient._id!, amount);
-        
+
         // Update transaction status
         await TransactionModel.updateStatus(senderTransaction._id!.toString(), 'completed');
 
-        // Create recipient transaction
+        // Create recipient transaction (credit - money received)
         await TransactionModel.create({
           userId: recipient._id!,
           accountId: recipient.accountId,
-          type: 'add_money',
+          type: 'transfer',
+          direction: 'credit', // Explicitly set to credit for money received
           amount,
           currency: 'INR',
           status: 'completed',
           description: `Received from ${sender.name}`,
+          senderDetails: { name: sender.name, upiId: sender.upiId },
           paymentMethod: 'wallet',
           metadata: { senderId: userId.toString(), senderName: sender.name },
         });
@@ -473,10 +477,10 @@ export class PaymentController {
       try {
         // Deduct balance
         await UserModel.updateBalance(userId, -amount);
-        
+
         // Simulate recharge processing (in production, call operator API)
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         // Update transaction status
         await TransactionModel.updateStatus(transaction._id!.toString(), 'completed');
 

@@ -1,0 +1,98 @@
+Objective
+
+Add basic face recognition (same person check) and voice-to-text commands to the existing app.
+Accuracy only needs to be “good enough to recognize the same guy”.
+
+Face Recognition (Frontend-Only ML)
+
+Use face-api.js
+
+Steps to Implement
+
+Add webcam access to an existing page/modal
+
+Load face-api.js models from /public/models
+
+Capture face and extract 128-D embedding
+
+On first use → register embedding
+
+On later use → verify embedding
+
+Send embeddings to backend APIs
+
+Matching Rule
+
+Euclidean distance < 0.6 → same person
+
+Return boolean only
+
+Optional:
+
+Blink / head-turn check using face landmarks
+
+Voice Recognition (Frontend)
+
+Use Web Speech API
+
+Steps to Implement
+
+Add mic button
+
+Start speech recognition in browser
+
+Convert voice → text
+
+Send text to backend as command
+
+Backend processes command normally
+
+⚠️ Do NOT identify speaker
+
+Backend Changes (Minimal)
+New API Routes
+
+POST /api/face/register
+
+Save embedding to MongoDB
+
+POST /api/face/verify
+
+Compare embeddings and return { verified: true | false }
+
+POST /api/voice/command
+
+Accept text input
+
+Distance Function (JS Only)
+function distance(a, b) {
+  return Math.sqrt(a.reduce((s, v, i) => s + (v - b[i]) ** 2, 0));
+}
+
+MongoDB Change (Minimal)
+
+Add one field to existing user collection:
+
+faceEmbedding: [Number]
+
+What NOT to Add
+
+No OpenCV
+
+No Whisper
+
+No native binaries
+
+No offline processing
+
+No high-security biometrics
+
+Result
+
+Face verification works in browser
+
+Voice commands work via mic
+
+Backend stays lightweight
+
+Fully Vercel-compatible

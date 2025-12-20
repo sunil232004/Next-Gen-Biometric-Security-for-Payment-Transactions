@@ -66,6 +66,9 @@ export interface PaymentHistory {
   _id: string;
   userId: string;
   transactionId: string;
+  accountId?: string;
+  id?: string;
+  recipientName?: string;
   type: PaymentType;
   direction: PaymentDirection;
   amount: number;
@@ -88,6 +91,7 @@ export interface PaymentHistory {
   completedAt?: string;
   createdAt: string;
   metadata?: Record<string, any>;
+  timestamp?: string;
 }
 
 // Pagination Info

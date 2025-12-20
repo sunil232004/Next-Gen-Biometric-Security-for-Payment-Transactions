@@ -39,6 +39,14 @@ export default function MoneyTransfer() {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [completedTransaction, setCompletedTransaction] = useState<any>(null);
   const [showReceipt, setShowReceipt] = useState(false);
+  const selectedContact: Contact | null = recipient
+    ? {
+        id: 0,
+        name: recipient,
+        phoneNumber: recipient,
+        upiId: recipient,
+      }
+    : null;
 
   // ...existing code...
   const handleBack = () => {

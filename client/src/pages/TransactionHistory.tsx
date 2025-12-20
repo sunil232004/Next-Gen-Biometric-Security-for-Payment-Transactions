@@ -17,6 +17,9 @@ import {
   SelectValue
 } from "@/components/ui/select";
 
+import { PaymentHistory } from "@/types/paymentHistory";
+import { ArrowDownCircle, ArrowUpCircle } from "lucide-react";
+
 // Transaction type definition
 
 export default function TransactionHistory() {
@@ -43,60 +46,53 @@ export default function TransactionHistory() {
     navigate("/");
   };
 
-  const getTransactionIcon = (type: string) => {
-    switch (type) {
+  const getTransactionIcon = (transaction: PaymentHistory) => {
+    switch (transaction.type) {
       case "recharge":
         return <Zap className="h-5 w-5 text-purple-500" />;
       case "bill_payment":
         return <ReceiptText className="h-5 w-5 text-orange-500" />;
-      case "transfer_in":
-        return <ArrowDown className="h-5 w-5 text-green-500" />;
-      case "transfer_out":
-        return <ArrowUp className="h-5 w-5 text-red-500" />;
+      case "transfer":
+      case "payment":
+        return transaction.direction === 'credit'
+          ? <ArrowDownCircle className="h-5 w-5 text-green-500" />
+          : <ArrowUpCircle className="h-5 w-5 text-red-500" />;
       default:
         return <Clock className="h-5 w-5 text-gray-500" />;
     }
   };
 
-  const getTransactionColor = (type: string) => {
-    switch (type) {
+  const getTransactionColor = (transaction: PaymentHistory) => {
+    switch (transaction.type) {
       case "recharge":
         return "text-purple-600";
       case "bill_payment":
-      case "transfer_out":
         return "text-red-600";
-      case "transfer_in":
-        return "text-green-600";
+      case "transfer":
+      case "payment":
+        return transaction.direction === 'credit' ? "text-green-600" : "text-red-600";
       default:
         return "text-gray-600";
     }
   };
 
-  const getTransactionPrefix = (type: string) => {
-    switch (type) {
-      case "recharge":
-      case "bill_payment":
-      case "transfer_out":
-        return "-";
-      case "transfer_in":
-        return "+";
-      default:
-        return "";
-    }
+  const getTransactionPrefix = (transaction: PaymentHistory) => {
+    if (transaction.direction === 'credit') return "+";
+    if (transaction.direction === 'debit') return "-";
+    return "";
   };
 
-  const getTransactionTypeLabel = (type: string) => {
-    switch (type) {
+  const getTransactionTypeLabel = (transaction: PaymentHistory) => {
+    switch (transaction.type) {
       case "recharge":
         return "Mobile Recharge";
       case "bill_payment":
         return "Bill Payment";
-      case "transfer_in":
-        return "Money Received";
-      case "transfer_out":
-        return "Money Sent";
+      case "transfer":
+      case "payment":
+        return transaction.direction === 'credit' ? "Money Received" : "Money Sent";
       default:
-        return type.charAt(0).toUpperCase() + type.slice(1).replace("_", " ");
+        return transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1).replace("_", " ");
     }
   };
 
@@ -115,21 +111,33 @@ export default function TransactionHistory() {
     return bTime - aTime;
   });
 
+  const doesTransactionMatchFilter = (transaction: typeof transactions[number]) => {
+    if (filterType === "all") return true;
+
+    if (filterType === "transfer_in") {
+      return transaction.direction === "credit";
+    }
+
+    if (filterType === "transfer_out") {
+      return transaction.direction === "debit";
+    }
+
+    return transaction.type === filterType;
+  };
+
   const filteredTransactions = sortedTransactions.filter(transaction => {
-        const matchesSearch = searchTerm 
-          ? (transaction.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             transaction.amount.toString().includes(searchTerm) ||
-             transaction.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             transaction.accountId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             transaction.transactionId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             transaction.recipientName?.toLowerCase().includes(searchTerm.toLowerCase()))
-          : true;
+    const matchesSearch = searchTerm
+      ? (transaction.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction.amount.toString().includes(searchTerm) ||
+        transaction.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction.accountId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction.transactionId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction.recipientName?.toLowerCase().includes(searchTerm.toLowerCase()))
+      : true;
 
-        const matchesFilter = filterType === "all" 
-          ? true 
-          : transaction.type === filterType;
+    const matchesFilter = doesTransactionMatchFilter(transaction);
 
-        return matchesSearch && matchesFilter;
+    return matchesSearch && matchesFilter;
   });
 
   return (
@@ -209,7 +217,7 @@ export default function TransactionHistory() {
         ) : (
           <div className="space-y-2 sm:space-y-4">
             {filteredTransactions.map((transaction) => (
-              <div 
+              <div
                 key={transaction._id || transaction.id || transaction.transactionId}
                 className="flex items-start space-x-2.5 sm:space-x-3 p-2.5 sm:p-3 rounded-lg hover:bg-gray-50 active:bg-gray-100 cursor-pointer transition-colors border border-gray-100"
                 onClick={() => {
@@ -218,16 +226,16 @@ export default function TransactionHistory() {
                 }}
               >
                 <div className="bg-gray-100 p-1.5 sm:p-2 rounded-full flex-shrink-0">
-                  {getTransactionIcon(transaction.type)}
+                  {getTransactionIcon(transaction)}
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start gap-2">
                     <h3 className="font-medium text-sm sm:text-base truncate">
-                      {getTransactionTypeLabel(transaction.type)}
+                      {getTransactionTypeLabel(transaction)}
                     </h3>
-                    <span className={`font-semibold text-sm sm:text-base whitespace-nowrap ${getTransactionColor(transaction.type)}`}>
-                      {getTransactionPrefix(transaction.type)}₹{transaction.amount}
+                    <span className={`font-semibold text-sm sm:text-base whitespace-nowrap ${getTransactionColor(transaction)}`}>
+                      {getTransactionPrefix(transaction)}₹{transaction.amount}
                     </span>
                   </div>
 

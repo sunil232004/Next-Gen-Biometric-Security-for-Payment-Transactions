@@ -8,12 +8,13 @@ import FreeToolsSection from "@/components/FreeToolsSection";
 import OffersSection from "@/components/OffersSection";
 import BottomNavigation from "@/components/BottomNavigation";
 import BottomQRButton from "@/components/BottomQRButton";
+import VoiceCommandButton from "@/components/VoiceCommandButton";
 
 export default function Home() {
   return (
     <div className="max-w-md md:max-w-lg mx-auto min-h-screen bg-white shadow-lg relative">
       <Header />
-      
+
       <main className="pb-24">
         <PromotionSlider />
         <UpiSection />
@@ -24,6 +25,7 @@ export default function Home() {
         <OffersSection />
       </main>
 
+      <VoiceCommandButton />
       <BottomQRButton />
       <BottomNavigation />
     </div>
